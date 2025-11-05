@@ -57,7 +57,7 @@ coverage/
 *.pid.lock
 
 # === Lock Files (optional if using multiple managers) ===
-# Uncomment if you use only one manager
-# package-lock.json
-# yarn.lock
-# pnpm-lock.yaml
+
+ package-lock.json
+ yarn.lock
+ pnpm-lock.yaml
