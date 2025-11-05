@@ -1,9 +1,8 @@
 // backend/middleware/authMiddleware.js
 import jwt from "jsonwebtoken";
 
-const authMiddleware = (req, res, next) => {
+export const requireAuth = (req, res, next) => {
   try {
-    // Get token from header
     const token = req.header("Authorization")?.replace("Bearer ", "");
 
     if (!token) {
@@ -13,9 +12,8 @@ const authMiddleware = (req, res, next) => {
       });
     }
 
-    // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.id;
+    req.user = { id: decoded.id };
     next();
   } catch (error) {
     res.status(401).json({
@@ -24,5 +22,3 @@ const authMiddleware = (req, res, next) => {
     });
   }
 };
-
-export default authMiddleware;

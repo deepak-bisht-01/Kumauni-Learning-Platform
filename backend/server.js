@@ -1,8 +1,9 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import db from "./config/database.js"; // your MySQL connection/pool
+import db from "./config/database.js";
 import authRoutes from "./routes/authRoutes.js";
+import dashboardRoutes from "./routes/dashboardRoutes.js"; // ✅ NEW
 
 dotenv.config();
 
@@ -11,7 +12,7 @@ const app = express();
 // ✅ Middlewares
 app.use(
   cors({
-    origin: "http://localhost:3000", // Frontend URL
+    origin: "http://localhost:3000",
     credentials: true,
   })
 );
@@ -20,6 +21,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // ✅ Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/dashboard", dashboardRoutes); // ✅ NEW
 
 // ✅ Health Check Route
 app.get("/api/health", (req, res) => {
@@ -39,7 +41,6 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 
 try {
-  // Optional test query to verify DB connection
   const [rows] = await db.query("SELECT 1 + 1 AS solution");
   console.log("✅ MySQL connected successfully:", rows[0].solution);
 

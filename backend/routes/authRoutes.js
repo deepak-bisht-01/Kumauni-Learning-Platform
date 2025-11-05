@@ -2,11 +2,11 @@
 import express from "express";
 import { body } from "express-validator";
 import { register, login, getCurrentUser } from "../controllers/authController.js";
-import authMiddleware from "../middleware/authMiddleware.js";
+import { requireAuth } from "../middleware/authMiddleware.js"; // ✅ named import
 
 const router = express.Router();
 
-// Validation rules
+// ✅ Validation rules
 const registerValidation = [
   body("full_name").trim().notEmpty().withMessage("Full name is required"),
   body("email").isEmail().withMessage("Please provide a valid email"),
@@ -21,10 +21,9 @@ const loginValidation = [
   body("password").notEmpty().withMessage("Password is required"),
 ];
 
-// Routes
+// ✅ Routes
 router.post("/register", registerValidation, register);
 router.post("/login", loginValidation, login);
-router.get("/me", authMiddleware, getCurrentUser);
+router.get("/me", requireAuth, getCurrentUser); // ✅ use correct name here
 
-// ✅ Export default router (for ESM)
 export default router;
