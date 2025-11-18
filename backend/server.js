@@ -1,9 +1,12 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import db from "./config/database.js";
+import client, { dbType } from "./config/dbClient.js";
 import authRoutes from "./routes/authRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js"; // ✅ NEW
+import learningRoutes from "./routes/learningRoutes.js";
+import storiesRoutes from "./routes/storiesRoutes.js";
+import quizRoutes from "./routes/quizRoutes.js";
 
 dotenv.config();
 
@@ -22,6 +25,9 @@ app.use(express.urlencoded({ extended: true }));
 // ✅ Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/dashboard", dashboardRoutes); // ✅ NEW
+app.use("/api/learning", learningRoutes);
+app.use("/api/stories", storiesRoutes);
+app.use("/api/quiz", quizRoutes);
 
 // ✅ Health Check Route
 app.get("/api/health", (req, res) => {
@@ -37,17 +43,21 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ✅ Start Server After DB Connection
+// ✅ Start Server After DB Initialization
 const PORT = process.env.PORT || 5000;
 
 try {
-  const [rows] = await db.query("SELECT 1 + 1 AS solution");
-  console.log("✅ MySQL connected successfully:", rows[0].solution);
+  if (dbType === "mysql") {
+    const [rows] = await client.query("SELECT 1 + 1 AS solution");
+    console.log("✅ MySQL connected successfully:", rows[0].solution);
+  } else {
+    console.log("✅ Using Supabase as database");
+  }
 
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
   });
 } catch (error) {
-  console.error("❌ Failed to connect to DB:", error.message);
+  console.error("❌ Failed to initialize DB:", error.message);
   process.exit(1);
 }

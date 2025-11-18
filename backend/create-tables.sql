@@ -64,6 +64,28 @@ CREATE TABLE IF NOT EXISTS lessons (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Lesson Blocks: flexible content units per lesson
+CREATE TABLE IF NOT EXISTS lesson_blocks (
+  id BIGSERIAL PRIMARY KEY,
+  lesson_id BIGINT REFERENCES lessons(id) ON DELETE CASCADE,
+  block_type VARCHAR(50) NOT NULL, -- e.g., 'text', 'quiz', 'word_meaning', 'sentence_making', 'audio', 'video'
+  title VARCHAR(255),
+  data JSONB, -- flexible payload: questions, words, sentences, html, urls
+  order_index INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Per-user progress per block (optional)
+CREATE TABLE IF NOT EXISTS lesson_block_progress (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+  block_id BIGINT REFERENCES lesson_blocks(id) ON DELETE CASCADE,
+  status VARCHAR(50) DEFAULT 'not_started', -- e.g., 'completed', 'in_progress'
+  score INTEGER,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id, block_id)
+);
+
 -- Progress table (for lessons)
 CREATE TABLE IF NOT EXISTS progress (
   id BIGSERIAL PRIMARY KEY,
@@ -156,4 +178,6 @@ CREATE INDEX IF NOT EXISTS idx_progress_lesson ON progress(lesson_id);
 CREATE INDEX IF NOT EXISTS idx_stories_category ON stories(category);
 CREATE INDEX IF NOT EXISTS idx_stories_level ON stories(level);
 CREATE INDEX IF NOT EXISTS idx_lessons_level ON lessons(level);
+CREATE INDEX IF NOT EXISTS idx_lesson_blocks_lesson ON lesson_blocks(lesson_id);
+CREATE INDEX IF NOT EXISTS idx_lesson_block_progress_user ON lesson_block_progress(user_id);
 

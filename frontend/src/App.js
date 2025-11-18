@@ -10,6 +10,9 @@ import StoryView from "./components/Stories/StoryView";
 import Learning from "./components/Learning/Learning";
 import LevelView from "./components/Learning/LevelView";
 import LessonView from "./components/Learning/LessonView";
+import ModuleView from "./components/Learning/ModuleView";
+import SelectMode from "./components/Learning/SelectMode";
+import ModuleOptions from "./components/Learning/ModuleOptions";
 
 function App() {
   return (
@@ -23,7 +26,10 @@ function App() {
          <Route path="/stories" element={<Stories />} />
          <Route path="/stories/:storyId" element={<StoryView />} />
         <Route path="/learning" element={<Learning />} />
+        <Route path="/learning/select" element={<SelectMode />} />
         <Route path="/learning/:levelId" element={<LevelView />} />
+        <Route path="/learning/:levelId/modules" element={<ModuleOptions />} />
+        <Route path="/learning/:levelId/module/:type" element={<ModuleView />} />
         <Route path="/learning/:levelId/:lessonId" element={<LessonView />} />
       </Routes>
     </Router>

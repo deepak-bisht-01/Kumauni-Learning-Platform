@@ -122,6 +122,7 @@ const HomeCulture = () => {
           display: flex;
           align-items: center;
           gap: 12px;
+          flex: 1;
         }
 
         .nav-logo {
@@ -142,8 +143,10 @@ const HomeCulture = () => {
         .nav-right {
           display: flex;
           align-items: center;
-          gap: 20px;
-          margin-right: 20px;
+          gap: 12px;
+          margin-right: 12px;
+          flex-wrap: wrap;
+          flex-shrink: 0;
         }
 
         .mobile-menu-button {
@@ -301,17 +304,19 @@ const HomeCulture = () => {
           }
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 768px) {
           nav {
             padding: 12px 24px;
           }
 
           .nav-right {
-            display: none;
+            display: flex;
+            gap: 8px;
+            margin-right: 8px;
           }
 
           .mobile-menu-button {
-            display: block;
+            display: none;
           }
 
           .mobile-menu {
@@ -515,7 +520,7 @@ const HomeCulture = () => {
 /* ===== Buttons ===== */
 const buttonStyle = {
   outline: {
-    padding: "10px 22px",
+    padding: "clamp(8px, 2.2vw, 12px) clamp(14px, 4.5vw, 22px)",
     borderRadius: "30px",
     border: "2px solid #22d3ee",
     color: "#22d3ee",
@@ -523,9 +528,10 @@ const buttonStyle = {
     cursor: "pointer",
     fontWeight: "600",
     transition: "0.3s ease",
+    fontSize: "clamp(12px, 2.6vw, 16px)",
   },
   gradient: {
-    padding: "10px 22px",
+    padding: "clamp(8px, 2.2vw, 12px) clamp(14px, 4.5vw, 22px)",
     borderRadius: "30px",
     background: "linear-gradient(90deg, #7f5af0, #22d3ee)",
     border: "none",
@@ -533,6 +539,7 @@ const buttonStyle = {
     cursor: "pointer",
     fontWeight: "600",
     transition: "0.3s ease",
+    fontSize: "clamp(12px, 2.6vw, 16px)",
   },
 };
 

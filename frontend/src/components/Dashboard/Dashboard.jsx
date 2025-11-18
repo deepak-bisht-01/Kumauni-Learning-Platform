@@ -339,7 +339,7 @@ export default function Dashboard() {
             </div>
             <button
               style={styles.startButton}
-              onClick={() => navigate("/learning")}
+              onClick={() => navigate("/learning/select")}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "scale(1.05)";
                 e.currentTarget.style.boxShadow = "0 12px 32px rgba(34,211,238,0.4)";
@@ -514,6 +514,8 @@ export default function Dashboard() {
             <div style={styles.progressPercentage}>75% Complete</div>
           </div>
         </div>
+
+        
       </div>
 
       {/* Daily Quiz Modal */}

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Play, Volume2, FileText, CheckCircle, Star, TrendingUp } from "lucide-react";
-import { fetchLesson, markLessonComplete } from "../../services/api";
+import { fetchLesson, markLessonComplete, completeBlock } from "../../services/api";
 
 export default function LessonView() {
   const { levelId, lessonId } = useParams();
@@ -132,6 +132,17 @@ export default function LessonView() {
           )}
         </div>
 
+        {Array.isArray(lesson.blocks) && lesson.blocks.length > 0 && (
+          <div style={{ marginTop: 24 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Sub Modules</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+              {lesson.blocks.map((b) => (
+                <BlockCard key={b.id} block={b} />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Content based on type */}
         <div style={styles.content}>
           {lesson.type === "video" && (
@@ -202,6 +213,146 @@ export default function LessonView() {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function BlockCard({ block }) {
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+  const [answer, setAnswer] = useState("");
+  const [selected, setSelected] = useState({});
+  const [current, setCurrent] = useState(0);
+  const [showModal, setShowModal] = useState(false);
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+  const markDone = async (score) => {
+    if (!token) return;
+    setSubmitting(true);
+    try {
+      const result = await completeBlock(token, block.id, score);
+      if (result.success) setDone(true);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (block.type === "text") {
+    return (
+      <div style={styles.blockCard}>
+        <div style={styles.itemHeader}><span style={styles.itemNumber}>{block.title || "Text"}</span></div>
+        <div style={styles.textContentInner} dangerouslySetInnerHTML={{ __html: block.data?.html || "" }} />
+        <button style={styles.smallAction} onClick={() => markDone()} disabled={submitting || done}>{done ? "Completed" : "Mark Done"}</button>
+      </div>
+    );
+  }
+
+  if (block.type === "word_meaning") {
+    return (
+      <div style={styles.blockCard}>
+        <div style={styles.itemHeader}><span style={styles.itemNumber}>{block.title || "Word Meanings"}</span></div>
+        <div style={{ display: "grid", gap: 8 }}>
+          {(block.data?.items || []).map((w, i) => (
+            <div key={i} style={styles.listItem}>
+              <span>{w.word}</span>
+              <span style={{ opacity: 0.7 }}>{w.meaning}</span>
+            </div>
+          ))}
+        </div>
+        <button style={styles.smallAction} onClick={() => markDone()} disabled={submitting || done}>{done ? "Completed" : "Mark Done"}</button>
+      </div>
+    );
+  }
+
+  if (block.type === "sentence_making") {
+    return (
+      <div style={styles.blockCard}>
+        <div style={styles.itemHeader}><span style={styles.itemNumber}>{block.title || "Sentence Making"}</span></div>
+        <div style={{ display: "grid", gap: 8 }}>
+          {(block.data?.prompts || []).map((p, i) => (
+            <div key={i} style={{ marginBottom: 6 }}>{p}</div>
+          ))}
+        </div>
+        <button style={styles.smallAction} onClick={() => setShowModal(true)} disabled={done}>Practice</button>
+
+        {showModal && (
+          <div style={styles.modalBackdrop}>
+            <div style={styles.modal}>
+              <h3 style={{ marginTop: 0 }}>{block.title || "Practice"}</h3>
+              <textarea value={answer} onChange={(e) => setAnswer(e.target.value)} style={styles.textarea} placeholder="Write your sentence here" />
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                <button style={{ ...styles.smallAction, background: "rgba(255,255,255,0.1)", color: "#e6edf6" }} onClick={() => setShowModal(false)}>Close</button>
+                <button style={styles.smallAction} onClick={async () => { await markDone(); setShowModal(false); }}>Submit</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
+    );
+  }
+
+  if (block.type === "quiz") {
+    const raw = block.data?.questions || [];
+    const normalized = raw.map((q) => {
+      const question = q.q ?? q.question ?? q.prompt ?? "";
+      const options = q.options ?? q.choices ?? q.answers ?? [];
+      let correctIndex = q.correctIndex ?? q.answerIndex;
+      if (correctIndex == null && q.answer != null) {
+        const idx = options.findIndex((o) => String(o).trim().toLowerCase() === String(q.answer).trim().toLowerCase());
+        correctIndex = idx >= 0 ? idx : null;
+      }
+      return { question, options, correctIndex };
+    });
+    const scoreCalc = () => {
+      let s = 0;
+      normalized.forEach((q, idx) => { if (q.correctIndex != null && selected[idx] === q.correctIndex) s += 1; });
+      return s;
+    };
+    const q = normalized[current];
+    const total = normalized.length || 0;
+    const canPrev = current > 0;
+    const canNext = current < total - 1;
+    return (
+      <div style={styles.blockCard}>
+        <div style={styles.itemHeader}><span style={styles.itemNumber}>{block.title || "Quiz"}</span></div>
+        <div style={styles.stepHeader}>
+          <span>Question {current + 1} / {total}</span>
+          <div style={styles.stepBarOuter}><div style={{ ...styles.stepBarInner, width: `${total ? ((current + 1) / total) * 100 : 0}%` }} /></div>
+        </div>
+        {q && (
+          <div>
+            <div style={{ fontWeight: 600, marginBottom: 10 }}>{q.question}</div>
+            {q.options && q.options.length > 0 ? (
+              <div style={{ display: "grid", gap: 8 }}>
+                {q.options.map((opt, j) => (
+                  <label key={j} style={styles.optionRow}>
+                    <input type="radio" name={`q-${current}`} checked={selected[current] === j} onChange={() => setSelected({ ...selected, [current]: j })} />
+                    <span>{opt}</span>
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <textarea value={answer} onChange={(e) => setAnswer(e.target.value)} style={styles.textarea} placeholder="Write your answer" />
+            )}
+          </div>
+        )}
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
+          <button style={{ ...styles.smallAction, background: "rgba(255,255,255,0.1)", color: "#e6edf6" }} onClick={() => setCurrent(Math.max(0, current - 1))} disabled={!canPrev}>Prev</button>
+          {canNext ? (
+            <button style={styles.smallAction} onClick={() => setCurrent(Math.min(total - 1, current + 1))} disabled={q?.options?.length > 0 && selected[current] == null}>Next</button>
+          ) : (
+            <button style={styles.smallAction} onClick={() => markDone(scoreCalc())} disabled={submitting || done || (q?.options?.length > 0 && selected[current] == null)}>{done ? "Completed" : "Submit"}</button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={styles.blockCard}>
+      <div style={styles.itemHeader}><span style={styles.itemNumber}>{block.title || "Module"}</span></div>
+      <button style={styles.smallAction} onClick={() => markDone()} disabled={submitting || done}>{done ? "Completed" : "Mark Done"}</button>
     </div>
   );
 }
@@ -435,6 +586,93 @@ const styles = {
     fontSize: 18,
     color: "#f87171",
     padding: "40px 20px",
+  },
+  blockCard: {
+    background: "rgba(255,255,255,0.05)",
+    borderRadius: 16,
+    padding: 16,
+    border: "1px solid rgba(255,255,255,0.08)",
+    boxShadow: "0 6px 20px rgba(0,0,0,0.4)",
+  },
+  textarea: {
+    width: "100%",
+    minHeight: 80,
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,0.1)",
+    background: "rgba(255,255,255,0.06)",
+    color: "#e6edf6",
+    padding: 10,
+    marginTop: 8,
+    marginBottom: 10,
+  },
+  smallAction: {
+    padding: "10px 14px",
+    borderRadius: 10,
+    border: "none",
+    background: "linear-gradient(90deg, #22d3ee, #8b5cf6)",
+    color: "#081018",
+    cursor: "pointer",
+    fontWeight: 700,
+  },
+  modalBackdrop: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.5)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1000,
+  },
+  modal: {
+    width: 520,
+    maxWidth: "95%",
+    background: "linear-gradient(180deg, rgba(34,211,238,0.12), rgba(139,92,246,0.12))",
+    borderRadius: 16,
+    border: "1px solid rgba(255,255,255,0.15)",
+    boxShadow: "0 12px 40px rgba(0,0,0,0.4)",
+    padding: 18,
+    color: "#e6edf6",
+  },
+  stepHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+    fontSize: 12,
+    opacity: 0.8,
+  },
+  stepBarOuter: {
+    width: 140,
+    height: 6,
+    background: "rgba(255,255,255,0.1)",
+    borderRadius: 6,
+    overflow: "hidden",
+  },
+  stepBarInner: {
+    height: "100%",
+    background: "linear-gradient(90deg, #22d3ee, #06b6d4)",
+  },
+  optionBtn: {
+    border: "1px solid rgba(255,255,255,0.15)",
+    borderRadius: 10,
+    padding: "10px 12px",
+    background: "rgba(255,255,255,0.06)",
+    color: "#e6edf6",
+    textAlign: "left",
+    cursor: "pointer",
+  },
+  optionSelected: {
+    background: "linear-gradient(90deg, rgba(34,211,238,0.15), rgba(139,92,246,0.15))",
+    borderColor: "rgba(139,92,246,0.6)",
+  },
+  optionRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "8px 10px",
+    border: "1px solid rgba(255,255,255,0.1)",
+    borderRadius: 10,
+    background: "rgba(255,255,255,0.06)",
   },
 };
 

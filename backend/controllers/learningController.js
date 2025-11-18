@@ -198,6 +198,22 @@ export const getLesson = async (req, res) => {
       .eq("lesson_id", lessonId)
       .single();
 
+    // Fetch flexible content blocks for the lesson
+    let blocks = [];
+    try {
+      const { data: blockRows } = await supabase
+        .from("lesson_blocks")
+        .select("id, block_type, title, data, order_index")
+        .eq("lesson_id", lessonId)
+        .order("order_index", { ascending: true });
+      blocks = (blockRows || []).map((b) => ({
+        id: b.id,
+        type: b.block_type,
+        title: b.title || null,
+        data: b.data || null,
+      }));
+    } catch (e) {}
+
     // Get next and previous lessons
     const { data: nextLesson } = await supabase
       .from("lessons")
@@ -258,6 +274,7 @@ export const getLesson = async (req, res) => {
         nextLessonId: nextLesson?.id || null,
         prevLessonId: prevLesson?.id || null,
         xpReward: xpReward,
+        blocks,
         levelProgress: {
           completed: completedLessons,
           total: totalLessons,
@@ -340,6 +357,146 @@ export const completeLesson = async (req, res) => {
     });
   } catch (error) {
     console.error("Error completing lesson:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+export const getLevelModule = async (req, res) => {
+  try {
+    const { levelId, type } = req.params;
+    const userId = req.user.id;
+    const dbLevel = LEVEL_MAPPING[levelId] || levelId;
+
+    if (type === "quizzes") {
+      const { data: quizzes } = await supabase
+        .from("quizzes")
+        .select("id, title, description, questions_count")
+        .in("level", [dbLevel, levelId])
+        .order("id", { ascending: true });
+      const { data: qp } = await supabase
+        .from("quiz_progress")
+        .select("quiz_id, status")
+        .eq("user_id", userId);
+      const pm = {};
+      qp?.forEach((r) => { pm[r.quiz_id] = r.status; });
+      const quizItems = (quizzes || []).map((q) => ({
+        id: q.id,
+        title: q.title,
+        description: q.description,
+        questions_count: q.questions_count,
+        completed: pm[q.id] === "completed",
+        source: "quizzes",
+      }));
+
+      const { data: lessons } = await supabase
+        .from("lessons")
+        .select("id")
+        .in("level", [dbLevel, levelId]);
+      const lessonIds = (lessons || []).map((l) => l.id);
+      const { data: quizBlocks } = await supabase
+        .from("lesson_blocks")
+        .select("id, lesson_id, block_type, title, data")
+        .in("lesson_id", lessonIds)
+        .eq("block_type", "quiz")
+        .order("order_index", { ascending: true });
+      const { data: lbp } = await supabase
+        .from("lesson_block_progress")
+        .select("block_id, status")
+        .eq("user_id", userId);
+      const lbpm = {};
+      lbp?.forEach((r) => { lbpm[r.block_id] = r.status; });
+      const blockItems = (quizBlocks || []).map((b) => ({
+        id: b.id,
+        lesson_id: b.lesson_id,
+        block_type: b.block_type,
+        title: b.title,
+        data: b.data,
+        completed: lbpm[b.id] === "completed",
+        source: "lesson_blocks",
+      }));
+      return res.json({ success: true, items: [...quizItems, ...blockItems] });
+    }
+
+    if (type === "daily_words") {
+      const { data } = await supabase
+        .from("flashcards")
+        .select("id, english_word, kumaoni_word, reviewed_count")
+        .eq("user_id", userId)
+        .order("reviewed_count", { ascending: true })
+        .limit(50);
+      return res.json({ success: true, items: data || [] });
+    }
+
+    const blockType = type === "word_meanings" ? "word_meaning" : type === "sentence_making" ? "sentence_making" : type;
+    const blockTypeAliases = [blockType];
+    if (blockType === "sentence_making") {
+      blockTypeAliases.push("sentence-making", "sentence");
+    }
+    if (blockType === "word_meaning") {
+      blockTypeAliases.push("word-meaning", "vocabulary", "words");
+    }
+    const { data: lessons } = await supabase
+      .from("lessons")
+      .select("id")
+      .in("level", [dbLevel, levelId]);
+    const lessonIds = (lessons || []).map((l) => l.id);
+    if (lessonIds.length === 0) return res.json({ success: true, items: [] });
+
+    const { data: blocks } = await supabase
+      .from("lesson_blocks")
+      .select("id, lesson_id, block_type, title, data")
+      .in("lesson_id", lessonIds)
+      .in("block_type", blockTypeAliases)
+      .order("order_index", { ascending: true });
+
+    const { data: lbp } = await supabase
+      .from("lesson_block_progress")
+      .select("block_id, status")
+      .eq("user_id", userId);
+    const pm = {};
+    lbp?.forEach((r) => { pm[r.block_id] = r.status; });
+    const items = (blocks || []).map((b) => ({
+      id: b.id,
+      lesson_id: b.lesson_id,
+      block_type: b.block_type,
+      title: b.title,
+      data: b.data,
+      completed: pm[b.id] === "completed",
+    }));
+
+    res.json({ success: true, items });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+export const completeBlock = async (req, res) => {
+  try {
+    const { blockId } = req.params;
+    const { score } = req.body || {};
+    const userId = req.user.id;
+
+    const { data: existing } = await supabase
+      .from("lesson_block_progress")
+      .select("status")
+      .eq("user_id", userId)
+      .eq("block_id", blockId)
+      .single();
+
+    if (existing) {
+      await supabase
+        .from("lesson_block_progress")
+        .update({ status: "completed", score: score ?? null, updated_at: new Date().toISOString() })
+        .eq("user_id", userId)
+        .eq("block_id", blockId);
+    } else {
+      await supabase
+        .from("lesson_block_progress")
+        .insert({ user_id: userId, block_id: blockId, status: "completed", score: score ?? null });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };

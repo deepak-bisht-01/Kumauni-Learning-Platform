@@ -96,6 +96,9 @@ export async function fetchLearningLevels(token) {
         "Content-Type": "application/json",
       },
     });
+    if (!res.ok) {
+      return { success: false, message: `HTTP ${res.status}` };
+    }
     const data = await res.json();
     return data;
   } catch (error) {
@@ -112,11 +115,49 @@ export async function fetchLevelContent(token, levelId) {
         "Content-Type": "application/json",
       },
     });
+    if (!res.ok) {
+      return { success: false, message: `HTTP ${res.status}` };
+    }
     const data = await res.json();
     return data;
   } catch (error) {
     console.error("API Error:", error);
     return { success: false, message: "Failed to fetch level content" };
+  }
+}
+
+export async function fetchLevelModule(token, levelId, type) {
+  try {
+    const res = await fetch(`http://localhost:5000/api/learning/levels/${levelId}/module/${type}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+    if (!res.ok) {
+      return { success: false, message: `HTTP ${res.status}` };
+    }
+    const data = await res.json();
+    return data;
+  } catch (error) {
+    return { success: false, message: "Failed to fetch module" };
+  }
+}
+
+export async function completeBlock(token, blockId, score) {
+  try {
+    const res = await fetch(`http://localhost:5000/api/learning/blocks/${blockId}/complete`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ score }),
+    });
+    const data = await res.json();
+    return data;
+  } catch (error) {
+    return { success: false, message: "Failed to complete block" };
   }
 }
 

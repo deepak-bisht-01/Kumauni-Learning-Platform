@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom"; // ✅ Added for redirect
 
 const LoginRegister = () => {
@@ -6,6 +6,19 @@ const LoginRegister = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
+  const [isMobile, setIsMobile] = useState(false);
+  const [showRightHalf, setShowRightHalf] = useState(false);
+  const [dragStartX, setDragStartX] = useState(null);
+  const [dragTranslate, setDragTranslate] = useState(0);
+  const trackRef = useRef(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 600px)");
+    const onChange = (e) => setIsMobile(e.matches);
+    setIsMobile(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   const [loginData, setLoginData] = useState({
     email: "",
@@ -142,7 +155,7 @@ const LoginRegister = () => {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        padding: "20px",
+        padding: isMobile ? "12px" : "20px",
         fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
       }}
     >
@@ -152,49 +165,94 @@ const LoginRegister = () => {
           borderRadius: "20px",
           boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
           overflow: "hidden",
-          maxWidth: "900px",
-          width: "100%",
+          maxWidth: isMobile ? "560px" : "900px",
+          width: isMobile ? "92vw" : "100%",
           display: "flex",
-          minHeight: "550px",
+          minHeight: isMobile ? "420px" : "550px",
+          flexDirection: "row",
         }}
       >
-        {/* Left Section */}
         <div
+          ref={trackRef}
+          onTouchStart={(e) => {
+            if (!isMobile) return;
+            setDragStartX(e.touches[0].clientX);
+            setDragTranslate(showRightHalf ? -50 : 0);
+          }}
+          onTouchMove={(e) => {
+            if (!isMobile || dragStartX === null) return;
+            const dx = e.touches[0].clientX - dragStartX;
+            const w = trackRef.current ? trackRef.current.offsetWidth : window.innerWidth;
+            const half = Math.max(1, w / 2);
+            const base = showRightHalf ? -50 : 0;
+            let current = base + (dx / half) * 50;
+            current = Math.max(-50, Math.min(0, current));
+            setDragTranslate(current);
+          }}
+          onTouchEnd={(e) => {
+            if (!isMobile || dragStartX === null) return;
+            const dx = e.changedTouches[0].clientX - dragStartX;
+            const threshold = 40;
+            if (dx < -threshold) setShowRightHalf(true);
+            else if (dx > threshold) setShowRightHalf(false);
+            setDragStartX(null);
+            setDragTranslate(showRightHalf ? -50 : 0);
+          }}
           style={{
-            background: "linear-gradient(135deg, #c3496bff 0%, #6f3aa4ff 100%)",
-            color: "white",
-            padding: "60px 40px",
-            flex: 1,
             display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            textAlign: "center",
+            width: isMobile ? "200%" : "100%",
+            transform: isMobile
+              ? `translateX(${dragStartX !== null ? dragTranslate : showRightHalf ? -50 : 0}%)`
+              : "none",
+            transition: isMobile ? (dragStartX !== null ? "none" : "transform 350ms ease") : "none",
           }}
         >
-          <div style={{ fontSize: "48px", marginBottom: "20px" }}>📚</div>
-          <h1 style={{ fontSize: "32px", fontWeight: 600 }}>Kumauni Siksha</h1>
-          <p style={{ fontSize: "16px", opacity: 0.9, lineHeight: 1.6 }}>
-            Empowering education in the Kumaoni language and culture. Join us to
-            preserve and promote our rich heritage.
-          </p>
-        </div>
-
-        {/* Right Section (Form) */}
-        <div
-          style={{
-            flex: 1,
-            padding: "60px 40px",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-          }}
-        >
-          {/* Tabs */}
           <div
             style={{
+              background: "linear-gradient(135deg, #c3496bff 0%, #6f3aa4ff 100%)",
+              color: "white",
+              padding: isMobile ? "32px 24px" : "60px 40px",
+              flex: isMobile ? "0 0 50%" : 1,
+              minWidth: isMobile ? "50%" : undefined,
               display: "flex",
-              gap: "20px",
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "center",
+              textAlign: "center",
+              minHeight: isMobile ? "240px" : undefined,
+            }}
+            onClick={() => {
+              if (!isMobile) return;
+              setShowRightHalf(true);
+            }}
+          >
+            <div style={{ fontSize: isMobile ? "36px" : "48px", marginBottom: "16px" }}>📚</div>
+            <h1 style={{ fontSize: isMobile ? "24px" : "32px", fontWeight: 600 }}>Kumauni Siksha</h1>
+            <p style={{ fontSize: isMobile ? "14px" : "16px", opacity: 0.9, lineHeight: 1.6 }}>
+              Empowering education in the Kumaoni language and culture. Join us to
+              preserve and promote our rich heritage.
+            </p>
+          </div>
+
+          <div
+            style={{
+              flex: isMobile ? "0 0 50%" : 1,
+              minWidth: isMobile ? "50%" : undefined,
+              padding: isMobile ? "20px 16px" : "60px 40px",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+            }}
+            onClick={() => {
+              if (!isMobile) return;
+              setShowRightHalf(false);
+            }}
+          >
+            {/* Tabs */}
+            <div
+              style={{
+                display: "flex",
+                gap: "20px",
               marginBottom: "30px",
               borderBottom: "2px solid #e0e0e0",
             }}
@@ -302,6 +360,7 @@ const LoginRegister = () => {
               </button>
             </form>
           )}
+          </div>
         </div>
       </div>
     </div>
@@ -311,16 +370,16 @@ const LoginRegister = () => {
 // 💅 Styles
 const inputStyle = {
   width: "100%",
-  padding: "12px",
-  marginBottom: "15px",
+  padding: "clamp(10px, 2.8vw, 12px)",
+  marginBottom: "clamp(12px, 3vw, 15px)",
   border: "2px solid #ddd",
   borderRadius: "8px",
 };
 
 const buttonStyle = {
   width: "100%",
-  padding: "14px",
-  fontSize: "16px",
+  padding: "clamp(12px, 3vw, 14px)",
+  fontSize: "clamp(14px, 3.6vw, 16px)",
   color: "#fff",
   background: "linear-gradient(135deg, #667eea, #764ba2)",
   border: "none",
