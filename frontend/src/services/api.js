@@ -1,6 +1,9 @@
 // frontend/src/services/api.js
+import authService from './authService';
+
 export async function fetchDashboardOverview(token) {
   try {
+    console.log("Making dashboard API request with token:", token ? "Token present" : "No token");
     const res = await fetch("http://localhost:5000/api/dashboard/overview", {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -8,11 +11,17 @@ export async function fetchDashboardOverview(token) {
       },
     });
 
+    console.log("Dashboard API response status:", res.status);
+    if (!res.ok) {
+      throw new Error(`HTTP error! status: ${res.status}`);
+    }
+    
     const data = await res.json();
+    console.log("Dashboard API response data:", data);
     return data;
   } catch (error) {
     console.error("API Error:", error);
-    return { success: false, message: "Failed to fetch dashboard" };
+    return { success: false, message: "Failed to fetch dashboard: " + error.message };
   }
 }
 
@@ -88,6 +97,24 @@ export async function toggleStoryFavorite(token, storyId) {
   }
 }
 
+// Add function to mark story as complete
+export async function markStoryComplete(token, storyId) {
+  try {
+    const res = await fetch(`http://localhost:5000/api/stories/${storyId}/complete`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+    const data = await res.json();
+    return data;
+  } catch (error) {
+    console.error("API Error:", error);
+    return { success: false, message: "Failed to mark story complete" };
+  }
+}
+
 export async function fetchLearningLevels(token) {
   try {
     const res = await fetch("http://localhost:5000/api/learning/levels", {
@@ -158,6 +185,26 @@ export async function completeBlock(token, blockId, score) {
     return data;
   } catch (error) {
     return { success: false, message: "Failed to complete block" };
+  }
+}
+
+// Add new function to complete module items
+export async function completeModuleItem(token, itemId, score) {
+  try {
+    // For now, we'll use the same endpoint as completeBlock since the backend might handle both
+    // In a real implementation, you might have a separate endpoint
+    const res = await fetch(`http://localhost:5000/api/learning/blocks/${itemId}/complete`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ score }),
+    });
+    const data = await res.json();
+    return data;
+  } catch (error) {
+    return { success: false, message: "Failed to complete module item" };
   }
 }
 

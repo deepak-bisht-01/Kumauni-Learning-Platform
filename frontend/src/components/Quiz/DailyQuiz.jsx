@@ -1,6 +1,10 @@
-import React, { useEffect, useState } from "react";
-import { X, CheckCircle, XCircle, Star, Trophy, ArrowRight, Lightbulb } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { X, Eye, CheckCircle, Star, RotateCcw, ChevronLeft, ChevronRight, ArrowRight, Trophy, Lightbulb } from "lucide-react";
 import { fetchDailyQuiz, submitDailyQuiz } from "../../services/api";
+
+// Add a custom event for dashboard refresh
+// Using a more robust approach for creating custom events
+const refreshDashboardEvent = new CustomEvent('refreshDashboard');
 
 export default function DailyQuiz({ isOpen, onClose }) {
   const [questions, setQuestions] = useState([]);
@@ -11,6 +15,8 @@ export default function DailyQuiz({ isOpen, onClose }) {
   const [xpEarned, setXpEarned] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [showReview, setShowReview] = useState(false);
+  const [reviewIndex, setReviewIndex] = useState(0);
 
   useEffect(() => {
     if (isOpen) {
@@ -23,6 +29,8 @@ export default function DailyQuiz({ isOpen, onClose }) {
       setShowResults(false);
       setScore(0);
       setXpEarned(0);
+      setShowReview(false);
+      setReviewIndex(0);
     }
   }, [isOpen]);
 
@@ -75,11 +83,37 @@ export default function DailyQuiz({ isOpen, onClose }) {
         setScore(result.score || 0);
         setXpEarned(result.xpEarned || 0);
         setShowResults(true);
+        
+        // Dispatch event to refresh dashboard
+        console.log('Dispatching refreshDashboard event from DailyQuiz');
+        window.dispatchEvent(refreshDashboardEvent);
       }
     } catch (error) {
       console.error("Error submitting quiz:", error);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleReview = () => {
+    setShowReview(true);
+    setReviewIndex(0);
+  };
+
+  const handleFinishReview = () => {
+    setShowReview(false);
+    setReviewIndex(0);
+  };
+
+  const handleReviewNext = () => {
+    if (reviewIndex < questions.length - 1) {
+      setReviewIndex(reviewIndex + 1);
+    }
+  };
+
+  const handleReviewPrevious = () => {
+    if (reviewIndex > 0) {
+      setReviewIndex(reviewIndex - 1);
     }
   };
 
@@ -93,30 +127,194 @@ export default function DailyQuiz({ isOpen, onClose }) {
   const progress = ((currentQuestion + 1) / questions.length) * 100;
   const allAnswered = questions.every((q) => selectedAnswers[q.id] !== undefined);
 
-  return (
-    <div style={styles.overlay} onClick={handleClose}>
-      <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div style={styles.header}>
-          <div style={styles.headerLeft}>
-            <div style={styles.iconContainer}>
-              <Lightbulb size={24} color="#3b82f6" />
-            </div>
-            <div>
-              <h2 style={styles.title}>Daily Quiz</h2>
-              <p style={styles.subtitle}>Test your knowledge from random modules</p>
-            </div>
-          </div>
-          <button style={styles.closeButton} onClick={handleClose}>
-            <X size={24} color="#e6edf6" />
-          </button>
-        </div>
+  // Review mode
+  if (showReview && questions.length > 0) {
+    const reviewQ = questions[reviewIndex];
+    const userAnswer = selectedAnswers[reviewQ.id];
+    const isCorrect = userAnswer === reviewQ.correct_answer;
+    const reviewProgress = ((reviewIndex + 1) / questions.length) * 100;
 
-        {loading ? (
-          <div style={styles.loadingContainer}>
-            <div style={styles.loading}>Loading quiz questions...</div>
+    return (
+      <div style={styles.overlay} onClick={handleClose}>
+        <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+          {/* Header */}
+          <div style={styles.header}>
+            <div style={styles.headerLeft}>
+              <div style={styles.iconContainer}>
+                <Eye size={24} color="#3b82f6" />
+              </div>
+              <div>
+                <h2 style={styles.title}>Quiz Review</h2>
+                <p style={styles.subtitle}>Review your answers and explanations</p>
+              </div>
+            </div>
+            <button style={styles.closeButton} onClick={handleClose}>
+              <X size={24} color="#e6edf6" />
+            </button>
           </div>
-        ) : showResults ? (
+
+          {/* Progress Bar */}
+          <div style={styles.progressContainer}>
+            <div style={styles.progressBar}>
+              <div style={{ ...styles.progressFill, width: `${reviewProgress}%` }} />
+            </div>
+            <div style={styles.progressText}>
+              Question {reviewIndex + 1} of {questions.length}
+            </div>
+          </div>
+
+          {/* Question */}
+          <div style={styles.questionContainer}>
+            <div style={styles.questionNumber}>Question {reviewIndex + 1}</div>
+            <h3 style={styles.questionText}>{reviewQ.question}</h3>
+            {reviewQ.module && (
+              <div style={styles.moduleBadge}>From: {reviewQ.module}</div>
+            )}
+
+            {/* Options with review indicators */}
+            <div style={styles.optionsContainer}>
+              {reviewQ.options.map((option, index) => {
+                let optionStyle = { ...styles.optionButton };
+                let indicator = null;
+                
+                if (index === reviewQ.correct_answer) {
+                  // Correct answer - green
+                  optionStyle = { 
+                    ...styles.optionButton,
+                    background: "rgba(16, 185, 129, 0.2)",
+                    border: "2px solid #10b981"
+                  };
+                  indicator = <CheckCircle size={16} color="#10b981" />;
+                } else if (index === userAnswer) {
+                  // User's answer
+                  if (!isCorrect) {
+                    // Wrong answer - red
+                    optionStyle = { 
+                      ...styles.optionButton,
+                      background: "rgba(239, 68, 68, 0.2)",
+                      border: "2px solid #ef4444"
+                    };
+                  } else {
+                    // Correct user answer - green
+                    optionStyle = { 
+                      ...styles.optionButton,
+                      background: "rgba(16, 185, 129, 0.2)",
+                      border: "2px solid #10b981"
+                    };
+                  }
+                }
+                
+                return (
+                  <button
+                    key={index}
+                    style={optionStyle}
+                    disabled
+                  >
+                    <div style={styles.optionContent}>
+                      <div
+                        style={{
+                          ...styles.optionCircle,
+                        }}
+                      >
+                        {indicator}
+                      </div>
+                      <span style={styles.optionText}>{option}</span>
+                      {index === reviewQ.correct_answer && (
+                        <span style={{ 
+                          marginLeft: "auto", 
+                          fontWeight: "bold",
+                          color: "#10b981"
+                        }}>
+                          ✓ Correct
+                        </span>
+                      )}
+                      {index === userAnswer && !isCorrect && (
+                        <span style={{ 
+                          marginLeft: "auto", 
+                          fontWeight: "bold",
+                          color: "#ef4444"
+                        }}>
+                          ✗ Your Answer
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {!isCorrect && (
+              <div style={{
+                background: "rgba(59, 130, 246, 0.1)",
+                border: "1px solid #3b82f6",
+                borderRadius: 8,
+                padding: 12,
+                margin: "16px 0",
+                fontStyle: "italic"
+              }}>
+                <strong>Explanation:</strong> The correct answer is "{reviewQ.options[reviewQ.correct_answer]}".
+              </div>
+            )}
+          </div>
+
+          {/* Navigation */}
+          <div style={styles.navigationContainer}>
+            <button
+              style={{
+                ...styles.navButton,
+                ...(reviewIndex === 0 ? styles.navButtonDisabled : {}),
+              }}
+              onClick={handleReviewPrevious}
+              disabled={reviewIndex === 0}
+            >
+              Previous
+            </button>
+            {reviewIndex === questions.length - 1 ? (
+              <button
+                style={styles.navButton}
+                onClick={handleFinishReview}
+              >
+                Finish Review
+              </button>
+            ) : (
+              <button
+                style={styles.navButton}
+                onClick={handleReviewNext}
+              >
+                Next <ArrowRight size={18} />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Results view with XP distribution
+  if (showResults && questions.length > 0) {
+    return (
+      <div style={styles.overlay} onClick={handleClose}>
+        <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+          {/* Header */}
+          <div style={styles.header}>
+            <div style={styles.headerLeft}>
+              <div style={styles.iconContainer}>
+                {score >= questions.length * 0.7 ? (
+                  <Trophy size={24} color="#facc15" fill="#facc15" />
+                ) : (
+                  <Star size={24} color="#3b82f6" />
+                )}
+              </div>
+              <div>
+                <h2 style={styles.title}>Quiz Results</h2>
+                <p style={styles.subtitle}>See how you did</p>
+              </div>
+            </div>
+            <button style={styles.closeButton} onClick={handleClose}>
+              <X size={24} color="#e6edf6" />
+            </button>
+          </div>
+
           <div style={styles.resultsContainer}>
             <div style={styles.resultsIcon(score >= questions.length * 0.7)}>
               {score >= questions.length * 0.7 ? (
@@ -142,47 +340,47 @@ export default function DailyQuiz({ isOpen, onClose }) {
                 <span style={styles.xpText}>+{xpEarned} XP Earned!</span>
               </div>
             )}
-            <div style={styles.resultsDetails}>
-              {questions.map((q, idx) => {
-                const userAnswer = selectedAnswers[q.id];
-                const isCorrect = userAnswer === q.correct_answer;
-                return (
-                  <div key={q.id} style={styles.resultItem}>
-                    <div style={styles.resultItemHeader}>
-                      <span style={styles.resultQuestionNumber}>Q{idx + 1}</span>
-                      {isCorrect ? (
-                        <CheckCircle size={20} color="#10b981" />
-                      ) : (
-                        <XCircle size={20} color="#ef4444" />
-                      )}
-                    </div>
-                    <p style={styles.resultQuestionText}>{q.question}</p>
-                    <div style={styles.resultAnswer}>
-                      <span style={styles.resultAnswerLabel}>Your answer:</span>
-                      <span
-                        style={{
-                          ...styles.resultAnswerText,
-                          color: isCorrect ? "#10b981" : "#ef4444",
-                        }}
-                      >
-                        {q.options[userAnswer]}
-                      </span>
-                    </div>
-                    {!isCorrect && (
-                      <div style={styles.resultAnswer}>
-                        <span style={styles.resultAnswerLabel}>Correct answer:</span>
-                        <span style={{ ...styles.resultAnswerText, color: "#10b981" }}>
-                          {q.options[q.correct_answer]}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            <div style={styles.actionButtons}>
+              <button style={{ ...styles.navButton, marginRight: 10 }} onClick={handleReview}>
+                <Eye size={16} style={{ marginRight: 8 }} />
+                Review Answers
+              </button>
+              <button 
+                style={{ ...styles.navButton, background: "rgba(255,255,255,0.1)", color: "#e6edf6" }} 
+                onClick={handleClose}
+              >
+                Close
+              </button>
             </div>
-            <button style={styles.closeResultsButton} onClick={handleClose}>
-              Close
-            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Quiz questions
+  return (
+    <div style={styles.overlay} onClick={handleClose}>
+      <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div style={styles.header}>
+          <div style={styles.headerLeft}>
+            <div style={styles.iconContainer}>
+              <Lightbulb size={24} color="#3b82f6" />
+            </div>
+            <div>
+              <h2 style={styles.title}>Daily Quiz</h2>
+              <p style={styles.subtitle}>Test your knowledge from random modules</p>
+            </div>
+          </div>
+          <button style={styles.closeButton} onClick={handleClose}>
+            <X size={24} color="#e6edf6" />
+          </button>
+        </div>
+
+        {loading ? (
+          <div style={styles.loadingContainer}>
+            <div style={styles.loading}>Loading quiz questions...</div>
           </div>
         ) : questions.length > 0 ? (
           <>
@@ -423,6 +621,14 @@ const styles = {
     border: "1px solid rgba(59,130,246,0.5)",
     boxShadow: "0 4px 12px rgba(59,130,246,0.3)",
   },
+  correctOption: {
+    border: "2px solid #10b981",
+    background: "rgba(16, 185, 129, 0.1)",
+  },
+  incorrectOption: {
+    border: "2px solid #ef4444",
+    background: "rgba(239, 68, 68, 0.1)",
+  },
   optionContent: {
     display: "flex",
     alignItems: "center",
@@ -442,6 +648,14 @@ const styles = {
     border: "2px solid #3b82f6",
     background: "#3b82f6",
   },
+  optionCircleCorrect: {
+    border: "2px solid #10b981",
+    background: "#10b981",
+  },
+  optionCircleIncorrect: {
+    border: "2px solid #ef4444",
+    background: "#ef4444",
+  },
   optionCircleInner: {
     width: 10,
     height: 10,
@@ -452,6 +666,16 @@ const styles = {
     fontSize: 16,
     color: "#e6edf6",
     flex: 1,
+  },
+  correctIndicator: {
+    color: "#10b981",
+    fontWeight: 600,
+    marginLeft: "auto",
+  },
+  incorrectIndicator: {
+    color: "#ef4444",
+    fontWeight: 600,
+    marginLeft: "auto",
   },
   navigationContainer: {
     display: "flex",
@@ -559,48 +783,20 @@ const styles = {
     fontWeight: 600,
     color: "#facc15",
   },
-  resultsDetails: {
-    textAlign: "left",
-    marginBottom: 24,
-  },
-  resultItem: {
-    background: "rgba(255,255,255,0.05)",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    border: "1px solid rgba(255,255,255,0.1)",
-  },
-  resultItemHeader: {
+  actionButtons: {
     display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
+    justifyContent: "center",
+    gap: 16,
   },
-  resultQuestionNumber: {
-    fontSize: 12,
-    fontWeight: 600,
-    color: "#3b82f6",
-    textTransform: "uppercase",
+  errorContainer: {
+    padding: "60px 28px",
+    textAlign: "center",
   },
-  resultQuestionText: {
+  errorText: {
     fontSize: 16,
     color: "#e6edf6",
-    margin: "0 0 12px 0",
-    lineHeight: 1.5,
-  },
-  resultAnswer: {
-    display: "flex",
-    gap: 8,
-    marginBottom: 8,
-    fontSize: 14,
-  },
-  resultAnswerLabel: {
     opacity: 0.7,
-    color: "#e6edf6",
-  },
-  resultAnswerText: {
-    fontWeight: 600,
-    color: "#e6edf6",
+    marginBottom: 24,
   },
   closeResultsButton: {
     background: "linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%)",
@@ -615,20 +811,12 @@ const styles = {
     transition: "all 0.2s",
     width: "100%",
   },
-  errorContainer: {
-    padding: "60px 28px",
-    textAlign: "center",
-  },
-  errorText: {
-    fontSize: 16,
-    color: "#e6edf6",
-    opacity: 0.7,
-    marginBottom: 24,
+  explanation: {
+    background: "rgba(59, 130, 246, 0.1)",
+    border: "1px solid #3b82f6",
+    borderRadius: 8,
+    padding: 12,
+    margin: "16px 0",
+    fontStyle: "italic",
   },
 };
-
-
-
-
-
-

@@ -4,6 +4,7 @@ import {
   getStory,
   updateProgress,
   toggleFavorite,
+  markComplete,
 } from "../controllers/storiesController.js";
 import { requireAuth } from "../middleware/authMiddleware.js";
 
@@ -20,5 +21,8 @@ router.post("/:storyId/progress", requireAuth, updateProgress);
 
 // Toggle favorite
 router.post("/:storyId/favorite", requireAuth, toggleFavorite);
+
+// Mark story as complete
+router.post("/:storyId/complete", requireAuth, markComplete);
 
 export default router;

@@ -284,6 +284,7 @@ const HomeCulture = () => {
             flex-direction: column;
             gap: 40px;
             padding: 120px 30px 60px;
+            min-height: auto; /* don’t force full screen height on medium screens */
           }
 
           .image-box {
@@ -296,6 +297,7 @@ const HomeCulture = () => {
             gap: 40px;
             padding: 60px 40px;
             text-align: center;
+            min-height: auto; /* allow section to size to its content */
           }
 
           .left-content {
@@ -337,6 +339,7 @@ const HomeCulture = () => {
 
           .hero {
             padding: 110px 20px 50px;
+            min-height: auto; /* avoid stacking multiple full-height sections on phones */
           }
 
           .right-section h1 {
@@ -360,6 +363,7 @@ const HomeCulture = () => {
 
           .hero {
             padding: 90px 16px 40px;
+            min-height: auto;
           }
 
           .image-box {
@@ -378,6 +382,7 @@ const HomeCulture = () => {
 
           .culture {
             padding: 40px 20px 80px;
+            min-height: auto;
           }
 
           .left-content h1 {

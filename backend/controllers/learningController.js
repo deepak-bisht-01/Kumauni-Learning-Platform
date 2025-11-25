@@ -206,13 +206,16 @@ export const getLesson = async (req, res) => {
         .select("id, block_type, title, data, order_index")
         .eq("lesson_id", lessonId)
         .order("order_index", { ascending: true });
+      
       blocks = (blockRows || []).map((b) => ({
         id: b.id,
         type: b.block_type,
         title: b.title || null,
         data: b.data || null,
       }));
-    } catch (e) {}
+    } catch (e) {
+      console.log("Error fetching lesson blocks:", e.message);
+    }
 
     // Get next and previous lessons
     const { data: nextLesson } = await supabase

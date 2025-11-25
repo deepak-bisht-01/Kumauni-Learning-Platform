@@ -123,15 +123,6 @@ CREATE TABLE IF NOT EXISTS user_achievements (
   UNIQUE(user_id, achievement_id)
 );
 
--- Flashcards table
-CREATE TABLE IF NOT EXISTS flashcards (
-  id BIGSERIAL PRIMARY KEY,
-  user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
-  english_word VARCHAR(255) NOT NULL,
-  kumaoni_word VARCHAR(255) NOT NULL,
-  reviewed_count INTEGER DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
 
 -- Quizzes table (optional)
 CREATE TABLE IF NOT EXISTS quizzes (

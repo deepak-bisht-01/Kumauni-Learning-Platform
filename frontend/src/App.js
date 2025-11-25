@@ -13,6 +13,14 @@ import LessonView from "./components/Learning/LessonView";
 import ModuleView from "./components/Learning/ModuleView";
 import SelectMode from "./components/Learning/SelectMode";
 import ModuleOptions from "./components/Learning/ModuleOptions";
+// Add new component for submodule view
+import SubmoduleView from "./components/Learning/SubmoduleView";
+// Add new component for module item view
+import ModuleItemView from "./components/Learning/ModuleItemView";
+// Add new component for quiz view
+import QuizView from "./components/Learning/QuizView";
+// Add new component for accent analyzer
+import AccentAnalyzer from "./components/AccentAnalyzer/AccentAnalyzer";
 
 function App() {
   return (
@@ -30,7 +38,15 @@ function App() {
         <Route path="/learning/:levelId" element={<LevelView />} />
         <Route path="/learning/:levelId/modules" element={<ModuleOptions />} />
         <Route path="/learning/:levelId/module/:type" element={<ModuleView />} />
+        {/* New route for individual module items */}
+        <Route path="/learning/:levelId/module/:type/:itemId" element={<ModuleItemView />} />
+        {/* New route for quiz view */}
+        <Route path="/learning/:levelId/quiz/:quizId" element={<QuizView />} />
         <Route path="/learning/:levelId/:lessonId" element={<LessonView />} />
+        {/* New route for submodule view */}
+        <Route path="/learning/:levelId/:lessonId/submodule/:submoduleId" element={<SubmoduleView />} />
+        {/* New route for accent analyzer */}
+        <Route path="/accent-analyzer" element={<AccentAnalyzer />} />
       </Routes>
     </Router>
   );

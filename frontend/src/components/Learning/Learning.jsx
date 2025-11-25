@@ -34,7 +34,8 @@ export default function Learning() {
   }, [navigate]);
 
   const handleLevelClick = (levelId) => {
-    navigate(`/learning/${levelId}`);
+    // Navigate directly to the modules for this level
+    navigate(`/learning/${levelId}/modules`);
   };
 
   if (loading) {

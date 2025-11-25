@@ -15,11 +15,13 @@ import {
   Award,
   Target,
   Sparkles,
+  Edit3,
+  ClipboardList,
+  Mic,
 } from "lucide-react";
 import { fetchDashboardOverview } from "../../services/api";
 import { useNavigate } from "react-router-dom";
 import authService from "../../services/authService";
-import DailyQuiz from "../Quiz/DailyQuiz";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -30,26 +32,53 @@ export default function Dashboard() {
   const [hoveredCard, setHoveredCard] = useState(null);
   const [showDailyQuiz, setShowDailyQuiz] = useState(false);
 
-  useEffect(() => {
+  // Function to fetch dashboard data
+  const fetchDashboardData = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
-      setErr("Not logged in.");
+      setErr("Not logged in. Please login again.");
       return;
     }
 
+    try {
+      console.log("Fetching dashboard data with token:", token.substring(0, 20) + "...");
+      const json = await fetchDashboardOverview(token);
+      console.log("Dashboard API response:", json);
+      if (!json.success) {
+        throw new Error(json.message || "Failed to fetch dashboard data");
+      }
+      setData(json);
+      setErr("");
+    } catch (e) {
+      console.error("Dashboard fetch error:", e);
+      const errorMsg = e.message || "Failed to load dashboard. Please try again.";
+      setErr(errorMsg);
+    }
+  };
+
+  useEffect(() => {
     // Get user info from localStorage
     const user = authService.getCurrentUser();
     setUserInfo(user);
+    console.log("Current user from authService:", user);
 
-    fetchDashboardOverview(token)
-      .then((json) => {
-        if (!json.success) throw new Error(json.message || "Failed to fetch");
-        setData(json);
-      })
-      .catch((e) => {
-        console.error("Dashboard fetch error:", e);
-        setErr(e.message);
-      });
+    // Fetch initial dashboard data
+    fetchDashboardData();
+
+    // Listen for refresh events
+    const handleRefresh = () => {
+      console.log('Dashboard refresh event received');
+      fetchDashboardData();
+    };
+
+    window.addEventListener('refreshDashboard', handleRefresh);
+    console.log('Dashboard event listener added');
+
+    // Cleanup event listener
+    return () => {
+      console.log('Dashboard event listener removed');
+      window.removeEventListener('refreshDashboard', handleRefresh);
+    };
   }, []);
 
   const handleLogout = () => {
@@ -64,34 +93,51 @@ export default function Dashboard() {
     }
   };
 
-  if (err)
+  if (err) {
+    console.error("Dashboard error:", err);
     return (
       <div style={styles.page}>
         <div style={styles.error}>{err}</div>
         <button
           style={styles.retryButton}
-          onClick={() => window.location.reload()}
+          onClick={() => {
+            setErr("");
+            fetchDashboardData();
+          }}
         >
           Retry
         </button>
+        <button
+          style={{...styles.retryButton, marginLeft: 10}}
+          onClick={() => {
+            localStorage.removeItem("token");
+            navigate("/login");
+          }}
+        >
+          Go to Login
+        </button>
       </div>
     );
+  }
 
-  if (!data)
+  if (!data) {
+    console.log("Dashboard data still loading...");
     return (
       <div style={styles.page}>
         <div style={styles.loading}>Loading dashboard…</div>
       </div>
     );
+  }
 
   // Handle both possible API response structures
+  console.log("Raw dashboard data:", data);
   const progressSummary = data.data?.progressSummary || data.progressSummary || {
     lessonsCompleted: 0,
     flashcardsReviewed: 0,
     xp: 0,
   };
   const achievements = data.data?.achievements || data.achievements || [];
-  const user = userInfo || data.user || data.data?.user || { full_name: "User", email: "" };
+  const user = data.user || data.data?.user || userInfo || { full_name: "User", email: "" };
 
   return (
     <div style={styles.page}>
@@ -102,7 +148,7 @@ export default function Dashboard() {
             <div style={styles.welcomeHeader}>
               <div>
                 <div style={styles.welcomeTitle}>
-                  Welcome back, {user.full_name?.split(" ")[0] || user.full_name || "User"}! 👋
+                  Welcome back, {user?.full_name || userInfo?.full_name || "User"}! 👋
                 </div>
                 <div style={styles.subText}>Continue your learning adventure</div>
               </div>
@@ -125,7 +171,7 @@ export default function Dashboard() {
               <div style={styles.profileAvatarSmall}>
                 <User size={18} color="#fff" />
               </div>
-              <span>{user.full_name || "KumaoniExplorer"}</span>
+              <span>{user?.full_name || userInfo?.full_name || "User"}</span>
               <Settings size={18} color="#bbb" style={{ marginLeft: "auto", cursor: "pointer" }} />
             </div>
           </div>
@@ -339,7 +385,7 @@ export default function Dashboard() {
             </div>
             <button
               style={styles.startButton}
-              onClick={() => navigate("/learning/select")}
+              onClick={() => navigate("/learning")}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "scale(1.05)";
                 e.currentTarget.style.boxShadow = "0 12px 32px rgba(34,211,238,0.4)";
@@ -356,33 +402,33 @@ export default function Dashboard() {
 
         {/* Feature Cards */}
         <div style={styles.featureGrid}>
-          {/* Daily Quiz */}
+          {/* Accent Analyzer */}
           <div 
             style={{
-              ...styles.featureCard("#3b82f6", "#60a5fa"),
-              ...(hoveredCard === 'quiz' ? styles.featureCardHover : {})
+              ...styles.featureCard("#8b5cf6", "#a78bfa"),
+              ...(hoveredCard === 'accent' ? styles.featureCardHover : {})
             }}
-            onMouseEnter={() => setHoveredCard('quiz')}
+            onMouseEnter={() => setHoveredCard('accent')}
             onMouseLeave={() => setHoveredCard(null)}
           >
-            <div style={styles.featureIcon("#3b82f6")}>
-              <Lightbulb size={32} color="#fff" />
+            <div style={styles.featureIcon("#8b5cf6")}>
+              <Mic size={32} color="#fff" />
             </div>
-            <div style={styles.featureTitle}>Daily Quiz</div>
-            <div style={styles.featureDescription}>Test your knowledge with daily challenges</div>
-            <button 
-              style={styles.smallButton("#3b82f6")}
-              onClick={() => setShowDailyQuiz(true)}
+            <div style={styles.featureTitle}>Accent Analyzer</div>
+            <div style={styles.featureDescription}>Analyze your Kumaoni pronunciation</div>
+            <button
+              style={styles.smallButton("#8b5cf6")}
+              onClick={() => navigate("/accent-analyzer")}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 8px 24px rgba(59,130,246,0.5)";
+                e.currentTarget.style.boxShadow = "0 8px 24px rgba(139,92,246,0.5)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 6px 20px rgba(59,130,246,0.4)";
+                e.currentTarget.style.boxShadow = "0 6px 20px rgba(139,92,246,0.4)";
               }}
             >
-              Start Quiz
+              Analyze Accent
             </button>
           </div>
 
@@ -518,8 +564,7 @@ export default function Dashboard() {
         
       </div>
 
-      {/* Daily Quiz Modal */}
-      <DailyQuiz isOpen={showDailyQuiz} onClose={() => setShowDailyQuiz(false)} />
+      {/* Removed DailyQuiz modal since we're replacing it with Accent Analyzer */}
     </div>
   );
 }
@@ -975,8 +1020,8 @@ const styles = {
   },
   statLabel: {
     fontSize: 13,
-    opacity: 0.7,
     fontWeight: 500,
+    opacity: 0.7,
   },
   statTrend: {
     opacity: 0.8,
@@ -1017,5 +1062,63 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     border: "1px solid rgba(139,92,246,0.4)",
+  },
+  modulesSection: {
+    marginBottom: 30,
+  },
+  modulesHeader: {
+    marginBottom: 24,
+  },
+  modulesTitle: {
+    fontSize: 24,
+    fontWeight: 700,
+    margin: 0,
+  },
+  modulesSubtitle: {
+    fontSize: 16,
+    opacity: 0.7,
+    margin: 0,
+  },
+  levelsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: 20,
+  },
+  levelCard: {
+    background: "rgba(255,255,255,0.05)",
+    borderRadius: 24,
+    padding: 24,
+    boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    transition: "all 0.3s ease",
+    cursor: "pointer",
+    textAlign: "center",
+  },
+  levelIconContainer: (color) => ({
+    width: 64,
+    height: 64,
+    borderRadius: "50%",
+    background: `linear-gradient(135deg, ${color}40 0%, ${color}30 100%)`,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    margin: "0 auto 16px",
+    border: `1px solid ${color}50`,
+    fontSize: 32,
+  }),
+  levelIcon: {
+    // Icon styles
+  },
+  levelTitle: {
+    fontSize: 18,
+    fontWeight: 700,
+    margin: "0 0 8px 0",
+    color: "#e6edf6",
+  },
+  levelDescription: {
+    fontSize: 14,
+    opacity: 0.7,
+    lineHeight: 1.5,
+    margin: 0,
   },
 };

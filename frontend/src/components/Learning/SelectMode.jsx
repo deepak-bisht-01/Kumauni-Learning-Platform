@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Target, Sparkles } from "lucide-react";
+import { Target, Sparkles } from "lucide-react";
 
 export default function SelectMode() {
   const navigate = useNavigate();
@@ -15,9 +15,6 @@ export default function SelectMode() {
   return (
     <div style={styles.page}>
       <div style={styles.container}>
-        <button style={styles.backButton} onClick={() => navigate("/dashboard")}> 
-          <ArrowLeft size={18} /> Back to Dashboard
-        </button>
         <div style={styles.card}>
           <div style={styles.cardHeader}>
             <div style={styles.headerIcon}><Target size={28} color="#8b5cf6" /></div>
@@ -42,7 +39,7 @@ export default function SelectMode() {
                   e.currentTarget.style.transform = "translateY(0)";
                   e.currentTarget.style.boxShadow = "0 8px 24px rgba(139,92,246,0.2)";
                 }}
-                onClick={() => navigate(`/learning/${m.id}/modules`)}
+                onClick={() => navigate(`/learning/${m.id}`)}
               >
                 {m.label}
               </button>
@@ -63,19 +60,6 @@ const styles = {
     padding: "80px 20px 40px",
   },
   container: { maxWidth: 900, margin: "0 auto" },
-  backButton: {
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: 10,
-    padding: "10px 20px",
-    color: "#e6edf6",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 20,
-    fontSize: 14,
-  },
   card: {
     background: "linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(59,130,246,0.1) 100%)",
     borderRadius: 24,

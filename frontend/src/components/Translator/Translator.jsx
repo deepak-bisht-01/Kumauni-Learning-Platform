@@ -1,16 +1,20 @@
 // frontend/src/components/Translator/Translator.jsx
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 
 export default function Translator() {
   const [text, setText] = useState("");
   const [translated, setTranslated] = useState("");
   const [loading, setLoading] = useState(false);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef(null);
   const API_URL = process.env.REACT_APP_TRANSLATOR_URL || "http://127.0.0.1:5001";
 
   const handleTranslate = async () => {
     if (!text.trim()) return;
     setLoading(true);
     setTranslated("");
+    setAudioUrl(null);
 
     try {
       const res = await fetch(`${API_URL}/translate`, {
@@ -24,6 +28,55 @@ export default function Translator() {
       setTranslated("⚠️ Translator server not running");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTextToSpeech = async () => {
+    if (!translated || loading) return;
+    
+    try {
+      const res = await fetch(`${API_URL}/text-to-speech`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: translated }),
+      });
+      
+      const data = await res.json();
+      if (data.audio) {
+        setAudioUrl(data.audio);
+        // Play the audio automatically
+        setTimeout(() => {
+          playAudio();
+        }, 100);
+      }
+    } catch (e) {
+      console.error("TTS Error:", e);
+    }
+  };
+
+  const playAudio = () => {
+    if (!audioUrl) return;
+    
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    
+    const audio = new Audio(audioUrl);
+    audioRef.current = audio;
+    
+    audio.onplay = () => setIsPlaying(true);
+    audio.onended = () => setIsPlaying(false);
+    audio.onpause = () => setIsPlaying(false);
+    
+    audio.play();
+  };
+
+  const stopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlaying(false);
     }
   };
 
@@ -53,7 +106,18 @@ export default function Translator() {
         </button>
 
         <div style={styles.resultBox}>
-          <strong>Result:</strong>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <strong>Result:</strong>
+            {translated && (
+              <button
+                style={styles.speakerButton}
+                onClick={isPlaying ? stopAudio : handleTextToSpeech}
+                disabled={loading}
+              >
+                {isPlaying ? "⏹️ Stop" : "🔊 Listen"}
+              </button>
+            )}
+          </div>
           <p style={styles.resultText}>
             {translated || "Your translation will appear here."}
           </p>
@@ -125,6 +189,16 @@ const styles = {
     color: "#081018",
     marginBottom: 20,
     boxShadow: "0 8px 24px rgba(34,211,238,0.3)",
+  },
+  speakerButton: {
+    background: "transparent",
+    border: "1px solid rgba(103,232,249,0.5)",
+    borderRadius: 6,
+    padding: "4px 8px",
+    color: "#67e8f9",
+    cursor: "pointer",
+    fontSize: 14,
+    fontWeight: 600,
   },
   resultBox: {
     background: "rgba(255,255,255,0.05)",

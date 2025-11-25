@@ -36,10 +36,18 @@ app.get("/api/health", (req, res) => {
 
 // ✅ Error Handling Middleware
 app.use((err, req, res, next) => {
-  console.error("Error:", err.stack);
-  res.status(500).json({
+  console.error("❌ Error:", err.message);
+  console.error("❌ Stack:", err.stack);
+  console.error("❌ Request path:", req.path);
+  console.error("❌ Request method:", req.method);
+  
+  // Don't send stack trace in production
+  const isDevelopment = process.env.NODE_ENV !== "production";
+  
+  res.status(err.status || 500).json({
     success: false,
-    message: "Something went wrong!",
+    message: err.message || "Something went wrong!",
+    ...(isDevelopment && { stack: err.stack }),
   });
 });
 

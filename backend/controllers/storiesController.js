@@ -33,6 +33,7 @@ export const getStories = async (req, res) => {
     // Get user-specific progress and favorites separately for better control
     let progressMap = {};
     let favoritesMap = {};
+    let readCountMap = {};
     
     if (userId) {
       const { data: progress } = await supabase
@@ -44,6 +45,16 @@ export const getStories = async (req, res) => {
         .from("story_favorites")
         .select("story_id, is_favorite")
         .eq("user_id", userId);
+
+      // Get read counts for all stories
+      const { data: allProgressData } = await supabase
+        .from("story_progress")
+        .select("story_id")
+        .eq("status", "completed");
+
+      allProgressData?.forEach(p => {
+        readCountMap[p.story_id] = (readCountMap[p.story_id] || 0) + 1;
+      });
 
       progress?.forEach(p => {
         progressMap[p.story_id] = p;
@@ -60,7 +71,7 @@ export const getStories = async (req, res) => {
       console.log("🔍 Querying famous stories from database...");
       const { data, error } = await supabase
         .from("stories")
-        .select("id, title, subtitle, image_url")
+        .select("id, title, subtitle, image_url, created_at")
         .eq("is_famous", true)
         .order("created_at", { ascending: false })
         .limit(5);
@@ -93,7 +104,6 @@ export const getStories = async (req, res) => {
 
     // Get read counts for famous stories
     const famousStoryIds = (famousStoriesData || []).map(s => s.id);
-    let readCountMap = {};
     
     if (famousStoryIds.length > 0) {
       const { data: progressData } = await supabase
@@ -154,6 +164,7 @@ export const getStories = async (req, res) => {
           progressPercentage: progress?.progress_percentage || 0,
           isFavorite: favorite?.is_favorite || false,
           createdAt: s.created_at,
+          readCount: readCountMap[s.id] || 0,
         };
       }),
       popular: popularStoriesResponse,
@@ -184,6 +195,7 @@ export const getStory = async (req, res) => {
     // Get user progress and favorite
     let progress = null;
     let favorite = null;
+    let readCount = 0;
     
     if (userId) {
       const { data: progressData } = await supabase
@@ -203,6 +215,15 @@ export const getStory = async (req, res) => {
       progress = progressData;
       favorite = favoriteData;
     }
+
+    // Get read count for this story
+    const { data: progressData } = await supabase
+      .from("story_progress")
+      .select("story_id")
+      .eq("status", "completed")
+      .eq("story_id", storyId);
+
+    readCount = progressData?.length || 0;
 
     // Get related stories
     const { data: related } = await supabase
@@ -231,6 +252,7 @@ export const getStory = async (req, res) => {
         progressPercentage: progress?.progress_percentage || 0,
         isFavorite: favorite?.is_favorite || false,
         createdAt: story.created_at,
+        readCount: readCount,
       },
       related: (related || []).map((r) => ({
         id: r.id,
@@ -374,6 +396,86 @@ export const toggleFavorite = async (req, res) => {
     });
   } catch (error) {
     console.error("Error toggling favorite:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// Mark story as complete
+export const markComplete = async (req, res) => {
+  try {
+    const { storyId } = req.params;
+    const userId = req.user.id;
+
+    // Update progress to 100% and status to completed
+    const { data: existing } = await supabase
+      .from("story_progress")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("story_id", storyId)
+      .single();
+
+    if (existing) {
+      // Update existing progress
+      const { error } = await supabase
+        .from("story_progress")
+        .update({
+          progress_percentage: 100,
+          status: "completed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId)
+        .eq("story_id", storyId);
+
+      if (error) throw error;
+    } else {
+      // Insert new progress
+      const { error } = await supabase
+        .from("story_progress")
+        .insert({
+          user_id: userId,
+          story_id: storyId,
+          progress_percentage: 100,
+          status: "completed",
+          updated_at: new Date().toISOString(),
+        });
+
+      if (error) throw error;
+    }
+
+    // Award XP for completing the story
+    const { data: story } = await supabase
+      .from("stories")
+      .select("xp_reward")
+      .eq("id", storyId)
+      .single();
+
+    if (story && story.xp_reward) {
+      try {
+        // Check if leaderboard entry exists
+        const { data: existingLeaderboard } = await supabase
+          .from("leaderboard")
+          .select("xp_total")
+          .eq("user_id", userId)
+          .single();
+
+        if (existingLeaderboard) {
+          await supabase
+            .from("leaderboard")
+            .update({ xp_total: existingLeaderboard.xp_total + story.xp_reward })
+            .eq("user_id", userId);
+        } else {
+          await supabase
+            .from("leaderboard")
+            .insert({ user_id: userId, xp_total: story.xp_reward });
+        }
+      } catch (e) {
+        console.log("Leaderboard update skipped");
+      }
+    }
+
+    res.json({ success: true, message: "Story marked as complete" });
+  } catch (error) {
+    console.error("Error marking story complete:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };

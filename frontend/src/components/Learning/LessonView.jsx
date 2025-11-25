@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Play, Volume2, FileText, CheckCircle, Star, TrendingUp } from "lucide-react";
-import { fetchLesson, markLessonComplete, completeBlock } from "../../services/api";
+import { fetchLesson, markLessonComplete } from "../../services/api";
+
+// Add a custom event for dashboard refresh
+// Using a more robust approach for creating custom events
+const refreshDashboardEvent = new CustomEvent('refreshDashboard');
 
 export default function LessonView() {
   const { levelId, lessonId } = useParams();
@@ -38,6 +42,10 @@ export default function LessonView() {
         setXpEarned(result.xpEarned);
         setShowXpAnimation(true);
         setTimeout(() => setShowXpAnimation(false), 3000);
+        
+        // Dispatch event to refresh dashboard
+        console.log('Dispatching refreshDashboard event from LessonView');
+        window.dispatchEvent(refreshDashboardEvent);
       }
       setCompleted(true);
     }
@@ -132,12 +140,42 @@ export default function LessonView() {
           )}
         </div>
 
+        {/* Submodules Section - Now links to separate pages */}
         {Array.isArray(lesson.blocks) && lesson.blocks.length > 0 && (
           <div style={{ marginTop: 24 }}>
-            <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Sub Modules</h2>
+            <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Learning Modules</h2>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-              {lesson.blocks.map((b) => (
-                <BlockCard key={b.id} block={b} />
+              {lesson.blocks.map((block) => (
+                <div 
+                  key={block.id} 
+                  style={styles.blockCard}
+                  onClick={() => navigate(`/learning/${levelId}/${lessonId}/submodule/${block.id}`)}
+                >
+                  <div style={styles.itemHeader}>
+                    <span style={styles.itemNumber}>
+                      {block.title || 
+                       (block.type === "text" ? "Text Content" : 
+                        block.type === "word_meaning" ? "Word Meanings" : 
+                        block.type === "sentence_making" ? "Sentence Making" : 
+                        block.type === "quiz" ? "Quiz" : 
+                        "Module")}
+                    </span>
+                  </div>
+                  <div style={styles.blockType}>
+                    {block.type === "text" && "📝 Text Content"}
+                    {block.type === "word_meaning" && "📚 Vocabulary Builder"}
+                    {block.type === "sentence_making" && "✍️ Sentence Construction"}
+                    {block.type === "quiz" && "❓ Knowledge Check"}
+                    {!["text", "word_meaning", "sentence_making", "quiz"].includes(block.type) && "📄 Learning Module"}
+                  </div>
+                  <div style={styles.blockDescription}>
+                    {block.type === "text" && "Read and understand key concepts"}
+                    {block.type === "word_meaning" && "Learn vocabulary one word at a time"}
+                    {block.type === "sentence_making" && "Practice constructing sentences in Kumauni"}
+                    {block.type === "quiz" && "Test your knowledge with questions"}
+                    {!["text", "word_meaning", "sentence_making", "quiz"].includes(block.type) && "Complete this learning module"}
+                  </div>
+                </div>
               ))}
             </div>
           </div>
@@ -217,146 +255,6 @@ export default function LessonView() {
   );
 }
 
-function BlockCard({ block }) {
-  const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
-  const [answer, setAnswer] = useState("");
-  const [selected, setSelected] = useState({});
-  const [current, setCurrent] = useState(0);
-  const [showModal, setShowModal] = useState(false);
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-
-  const markDone = async (score) => {
-    if (!token) return;
-    setSubmitting(true);
-    try {
-      const result = await completeBlock(token, block.id, score);
-      if (result.success) setDone(true);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (block.type === "text") {
-    return (
-      <div style={styles.blockCard}>
-        <div style={styles.itemHeader}><span style={styles.itemNumber}>{block.title || "Text"}</span></div>
-        <div style={styles.textContentInner} dangerouslySetInnerHTML={{ __html: block.data?.html || "" }} />
-        <button style={styles.smallAction} onClick={() => markDone()} disabled={submitting || done}>{done ? "Completed" : "Mark Done"}</button>
-      </div>
-    );
-  }
-
-  if (block.type === "word_meaning") {
-    return (
-      <div style={styles.blockCard}>
-        <div style={styles.itemHeader}><span style={styles.itemNumber}>{block.title || "Word Meanings"}</span></div>
-        <div style={{ display: "grid", gap: 8 }}>
-          {(block.data?.items || []).map((w, i) => (
-            <div key={i} style={styles.listItem}>
-              <span>{w.word}</span>
-              <span style={{ opacity: 0.7 }}>{w.meaning}</span>
-            </div>
-          ))}
-        </div>
-        <button style={styles.smallAction} onClick={() => markDone()} disabled={submitting || done}>{done ? "Completed" : "Mark Done"}</button>
-      </div>
-    );
-  }
-
-  if (block.type === "sentence_making") {
-    return (
-      <div style={styles.blockCard}>
-        <div style={styles.itemHeader}><span style={styles.itemNumber}>{block.title || "Sentence Making"}</span></div>
-        <div style={{ display: "grid", gap: 8 }}>
-          {(block.data?.prompts || []).map((p, i) => (
-            <div key={i} style={{ marginBottom: 6 }}>{p}</div>
-          ))}
-        </div>
-        <button style={styles.smallAction} onClick={() => setShowModal(true)} disabled={done}>Practice</button>
-
-        {showModal && (
-          <div style={styles.modalBackdrop}>
-            <div style={styles.modal}>
-              <h3 style={{ marginTop: 0 }}>{block.title || "Practice"}</h3>
-              <textarea value={answer} onChange={(e) => setAnswer(e.target.value)} style={styles.textarea} placeholder="Write your sentence here" />
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-                <button style={{ ...styles.smallAction, background: "rgba(255,255,255,0.1)", color: "#e6edf6" }} onClick={() => setShowModal(false)}>Close</button>
-                <button style={styles.smallAction} onClick={async () => { await markDone(); setShowModal(false); }}>Submit</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-      </div>
-    );
-  }
-
-  if (block.type === "quiz") {
-    const raw = block.data?.questions || [];
-    const normalized = raw.map((q) => {
-      const question = q.q ?? q.question ?? q.prompt ?? "";
-      const options = q.options ?? q.choices ?? q.answers ?? [];
-      let correctIndex = q.correctIndex ?? q.answerIndex;
-      if (correctIndex == null && q.answer != null) {
-        const idx = options.findIndex((o) => String(o).trim().toLowerCase() === String(q.answer).trim().toLowerCase());
-        correctIndex = idx >= 0 ? idx : null;
-      }
-      return { question, options, correctIndex };
-    });
-    const scoreCalc = () => {
-      let s = 0;
-      normalized.forEach((q, idx) => { if (q.correctIndex != null && selected[idx] === q.correctIndex) s += 1; });
-      return s;
-    };
-    const q = normalized[current];
-    const total = normalized.length || 0;
-    const canPrev = current > 0;
-    const canNext = current < total - 1;
-    return (
-      <div style={styles.blockCard}>
-        <div style={styles.itemHeader}><span style={styles.itemNumber}>{block.title || "Quiz"}</span></div>
-        <div style={styles.stepHeader}>
-          <span>Question {current + 1} / {total}</span>
-          <div style={styles.stepBarOuter}><div style={{ ...styles.stepBarInner, width: `${total ? ((current + 1) / total) * 100 : 0}%` }} /></div>
-        </div>
-        {q && (
-          <div>
-            <div style={{ fontWeight: 600, marginBottom: 10 }}>{q.question}</div>
-            {q.options && q.options.length > 0 ? (
-              <div style={{ display: "grid", gap: 8 }}>
-                {q.options.map((opt, j) => (
-                  <label key={j} style={styles.optionRow}>
-                    <input type="radio" name={`q-${current}`} checked={selected[current] === j} onChange={() => setSelected({ ...selected, [current]: j })} />
-                    <span>{opt}</span>
-                  </label>
-                ))}
-              </div>
-            ) : (
-              <textarea value={answer} onChange={(e) => setAnswer(e.target.value)} style={styles.textarea} placeholder="Write your answer" />
-            )}
-          </div>
-        )}
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
-          <button style={{ ...styles.smallAction, background: "rgba(255,255,255,0.1)", color: "#e6edf6" }} onClick={() => setCurrent(Math.max(0, current - 1))} disabled={!canPrev}>Prev</button>
-          {canNext ? (
-            <button style={styles.smallAction} onClick={() => setCurrent(Math.min(total - 1, current + 1))} disabled={q?.options?.length > 0 && selected[current] == null}>Next</button>
-          ) : (
-            <button style={styles.smallAction} onClick={() => markDone(scoreCalc())} disabled={submitting || done || (q?.options?.length > 0 && selected[current] == null)}>{done ? "Completed" : "Submit"}</button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={styles.blockCard}>
-      <div style={styles.itemHeader}><span style={styles.itemNumber}>{block.title || "Module"}</span></div>
-      <button style={styles.smallAction} onClick={() => markDone()} disabled={submitting || done}>{done ? "Completed" : "Mark Done"}</button>
-    </div>
-  );
-}
-
 const styles = {
   page: {
     minHeight: "100vh",
@@ -397,11 +295,9 @@ const styles = {
     gap: 12,
     zIndex: 1000,
     animation: "fadeInOut 3s ease-in-out",
-    boxShadow: "0 8px 32px rgba(250, 204, 21, 0.4)",
-    border: "2px solid #facc15",
   },
   xpText: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 700,
     color: "#facc15",
   },
@@ -409,7 +305,7 @@ const styles = {
     background: "rgba(255,255,255,0.05)",
     borderRadius: 16,
     padding: 20,
-    marginBottom: 30,
+    marginBottom: 24,
     border: "1px solid rgba(255,255,255,0.08)",
   },
   progressHeader: {
@@ -425,31 +321,29 @@ const styles = {
   },
   progressPercentage: {
     fontSize: 14,
-    fontWeight: 700,
-    color: "#22d3ee",
+    fontWeight: 600,
   },
   progressBarContainer: {
     width: "100%",
-    height: 10,
+    height: 8,
     background: "rgba(255,255,255,0.1)",
-    borderRadius: 5,
+    borderRadius: 4,
     overflow: "hidden",
   },
   progressBarFill: {
     height: "100%",
-    background: "linear-gradient(90deg, #22d3ee 0%, #06b6d4 100%)",
-    borderRadius: 5,
-    transition: "width 0.5s ease",
-    boxShadow: "0 0 10px rgba(34,211,238,0.5)",
+    background: "linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%)",
+    borderRadius: 4,
+    transition: "width 0.3s ease",
   },
   header: {
     marginBottom: 30,
   },
   lessonHeader: {
     display: "flex",
+    justifyContent: "space-between",
     alignItems: "center",
-    gap: 12,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   title: {
     fontSize: 32,
@@ -457,122 +351,125 @@ const styles = {
     margin: 0,
   },
   subtitle: {
-    fontSize: 18,
-    opacity: 0.7,
-    lineHeight: 1.6,
-    marginBottom: 12,
+    fontSize: 16,
+    opacity: 0.8,
+    margin: "0 0 16px 0",
+    lineHeight: 1.5,
   },
   xpRewardBadge: {
     display: "inline-flex",
     alignItems: "center",
-    gap: 6,
-    background: "rgba(250, 204, 21, 0.15)",
-    border: "1px solid rgba(250, 204, 21, 0.3)",
-    borderRadius: 8,
+    gap: 8,
+    background: "rgba(250,204,21,0.2)",
+    border: "1px solid rgba(250,204,21,0.3)",
+    borderRadius: 12,
     padding: "8px 16px",
     fontSize: 14,
-    fontWeight: 600,
     color: "#facc15",
+  },
+  blockCard: {
+    background: "rgba(255,255,255,0.05)",
+    borderRadius: 16,
+    padding: 20,
+    border: "1px solid rgba(255,255,255,0.08)",
+    cursor: "pointer",
+    transition: "transform 0.2s, box-shadow 0.2s",
+    boxShadow: "0 6px 20px rgba(0,0,0,0.4)",
+  },
+  itemHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  itemNumber: {
+    fontSize: 16,
+    fontWeight: 700,
+    color: "#3b82f6",
+  },
+  blockType: {
+    fontSize: 14,
+    opacity: 0.7,
+  },
+  blockDescription: {
+    fontSize: 14,
+    opacity: 0.7,
   },
   content: {
     background: "rgba(255,255,255,0.05)",
-    borderRadius: 20,
-    padding: 40,
-    marginBottom: 40,
+    borderRadius: 16,
+    padding: 24,
     border: "1px solid rgba(255,255,255,0.08)",
-    minHeight: 300,
+    marginBottom: 30,
   },
   mediaContainer: {
-    textAlign: "center",
-  },
-  videoPlaceholder: {
-    background: "rgba(0,0,0,0.3)",
-    borderRadius: 16,
-    padding: "60px 20px",
+    width: "100%",
     marginBottom: 20,
   },
   video: {
     width: "100%",
-    maxWidth: 800,
     borderRadius: 12,
-    margin: "0 auto",
-    display: "block",
+    background: "#000",
+  },
+  videoPlaceholder: {
+    width: "100%",
+    height: 300,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "rgba(0,0,0,0.3)",
+    borderRadius: 12,
+    color: "#fff",
   },
   audioContainer: {
-    background: "rgba(0,0,0,0.3)",
-    borderRadius: 16,
-    padding: "40px 20px",
-    marginBottom: 20,
-    textAlign: "center",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    padding: 30,
   },
   audio: {
     width: "100%",
-    maxWidth: 500,
-    margin: "20px auto 0",
-    display: "block",
+    maxWidth: 400,
   },
   textContent: {
-    lineHeight: 1.8,
+    lineHeight: 1.6,
   },
   textContentInner: {
-    fontSize: 16,
-    lineHeight: 1.8,
-    "& p": {
-      marginBottom: 16,
-    },
-    "& h2": {
-      fontSize: 24,
-      fontWeight: 700,
-      marginTop: 24,
-      marginBottom: 12,
-    },
-    "& h3": {
-      fontSize: 20,
-      fontWeight: 600,
-      marginTop: 20,
-      marginBottom: 10,
-    },
-    "& ul, & ol": {
-      marginLeft: 20,
-      marginBottom: 16,
-    },
-    "& li": {
-      marginBottom: 8,
-    },
+    lineHeight: 1.6,
   },
   navigation: {
     display: "flex",
     justifyContent: "space-between",
-    gap: 20,
+    marginTop: 20,
   },
   navButton: {
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.1)",
+    background: "rgba(255,255,255,0.1)",
+    border: "1px solid rgba(255,255,255,0.2)",
     borderRadius: 12,
-    padding: "14px 28px",
+    padding: "12px 24px",
     color: "#e6edf6",
+    fontSize: 14,
+    fontWeight: 600,
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
     gap: 8,
-    fontSize: 15,
-    fontWeight: 600,
     transition: "all 0.2s",
   },
   nextButton: {
-    background: "linear-gradient(90deg, #22d3ee 0%, #06b6d4 100%)",
+    background: "linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%)",
     border: "none",
     borderRadius: 12,
-    padding: "14px 28px",
-    color: "#081018",
+    padding: "12px 24px",
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: 600,
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
     gap: 8,
-    fontSize: 15,
-    fontWeight: 700,
-    boxShadow: "0 8px 24px rgba(34,211,238,0.3)",
-    marginLeft: "auto",
+    boxShadow: "0 4px 20px rgba(59,130,246,0.4)",
     transition: "all 0.2s",
   },
   loading: {
@@ -587,115 +484,4 @@ const styles = {
     color: "#f87171",
     padding: "40px 20px",
   },
-  blockCard: {
-    background: "rgba(255,255,255,0.05)",
-    borderRadius: 16,
-    padding: 16,
-    border: "1px solid rgba(255,255,255,0.08)",
-    boxShadow: "0 6px 20px rgba(0,0,0,0.4)",
-  },
-  textarea: {
-    width: "100%",
-    minHeight: 80,
-    borderRadius: 10,
-    border: "1px solid rgba(255,255,255,0.1)",
-    background: "rgba(255,255,255,0.06)",
-    color: "#e6edf6",
-    padding: 10,
-    marginTop: 8,
-    marginBottom: 10,
-  },
-  smallAction: {
-    padding: "10px 14px",
-    borderRadius: 10,
-    border: "none",
-    background: "linear-gradient(90deg, #22d3ee, #8b5cf6)",
-    color: "#081018",
-    cursor: "pointer",
-    fontWeight: 700,
-  },
-  modalBackdrop: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,0.5)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1000,
-  },
-  modal: {
-    width: 520,
-    maxWidth: "95%",
-    background: "linear-gradient(180deg, rgba(34,211,238,0.12), rgba(139,92,246,0.12))",
-    borderRadius: 16,
-    border: "1px solid rgba(255,255,255,0.15)",
-    boxShadow: "0 12px 40px rgba(0,0,0,0.4)",
-    padding: 18,
-    color: "#e6edf6",
-  },
-  stepHeader: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 10,
-    fontSize: 12,
-    opacity: 0.8,
-  },
-  stepBarOuter: {
-    width: 140,
-    height: 6,
-    background: "rgba(255,255,255,0.1)",
-    borderRadius: 6,
-    overflow: "hidden",
-  },
-  stepBarInner: {
-    height: "100%",
-    background: "linear-gradient(90deg, #22d3ee, #06b6d4)",
-  },
-  optionBtn: {
-    border: "1px solid rgba(255,255,255,0.15)",
-    borderRadius: 10,
-    padding: "10px 12px",
-    background: "rgba(255,255,255,0.06)",
-    color: "#e6edf6",
-    textAlign: "left",
-    cursor: "pointer",
-  },
-  optionSelected: {
-    background: "linear-gradient(90deg, rgba(34,211,238,0.15), rgba(139,92,246,0.15))",
-    borderColor: "rgba(139,92,246,0.6)",
-  },
-  optionRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    padding: "8px 10px",
-    border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: 10,
-    background: "rgba(255,255,255,0.06)",
-  },
 };
-
-// Add CSS animation for XP popup
-const styleSheet = document.createElement("style");
-styleSheet.textContent = `
-  @keyframes fadeInOut {
-    0% {
-      opacity: 0;
-      transform: translate(-50%, -50%) scale(0.8);
-    }
-    20% {
-      opacity: 1;
-      transform: translate(-50%, -50%) scale(1.1);
-    }
-    80% {
-      opacity: 1;
-      transform: translate(-50%, -50%) scale(1);
-    }
-    100% {
-      opacity: 0;
-      transform: translate(-50%, -50%) scale(0.8);
-    }
-  }
-`;
-document.head.appendChild(styleSheet);

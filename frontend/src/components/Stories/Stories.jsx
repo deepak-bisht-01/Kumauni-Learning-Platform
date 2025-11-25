@@ -26,6 +26,7 @@ export default function Stories() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [searchFocused, setSearchFocused] = useState(false);
   const [hoveredCard, setHoveredCard] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -74,6 +75,27 @@ export default function Stories() {
       });
   }, [search, selectedCategory, selectedLevel, navigate]);
 
+  // Detect mobile width for simpler, phone-friendly layout
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Auto-rotate carousel every 5 seconds
+  useEffect(() => {
+    if (popular.length <= 1) return;
+    
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % popular.length);
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [popular.length]);
+
   // Manual navigation handlers
   const handlePrev = () => {
     setCurrentIndex((prev) => (prev - 1 + popular.length) % popular.length);
@@ -120,6 +142,19 @@ export default function Stories() {
         select.filterSelect:focus option:checked {
           background: #f0f0f0 !important;
           color: #000000 !important;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideIn {
+          from { opacity: 0; transform: translateX(30px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes pulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+          100% { transform: scale(1); }
         }
       `}</style>
       <div style={styles.page}>
@@ -205,10 +240,13 @@ export default function Stories() {
               </p>
             </div>
           ) : (
-
             <div style={styles.carouselContainer}>
               <div style={styles.carousel}>
                 {popular.map((story, index) => {
+                  // On mobile, show only the active story as a single centered card
+                  if (isMobile && index !== currentIndex) {
+                    return null;
+                  }
                   // Calculate position relative to current index
                   let position = index - currentIndex;
                   
@@ -225,6 +263,8 @@ export default function Stories() {
                   let translateX = 0;
                   let zIndex = 5;
                   let filter = "none";
+                  let boxShadow = "0 20px 60px rgba(0,0,0,0.6)";
+                  let animation = "none";
 
                   if (position === 0) {
                     // Center card (active) - current story
@@ -233,6 +273,8 @@ export default function Stories() {
                     translateX = 0;
                     zIndex = 10;
                     filter = "brightness(1)";
+                    boxShadow = "0 30px 80px rgba(0,0,0,0.8)";
+                    animation = "pulse 2s infinite";
                   } else if (position === -1) {
                     // Left card (previous)
                     scale = 0.8;
@@ -275,19 +317,29 @@ export default function Stories() {
                       key={story.id}
                       style={{
                         ...styles.carouselCard,
-                        transform: `translateX(${translateX}px) scale(${scale})`,
-                        opacity,
-                        zIndex,
-                        filter,
+                        ...(isMobile
+                          ? styles.carouselCardMobile
+                          : {
+                              transform: `translateX(${translateX}px) scale(${scale})`,
+                              opacity,
+                              zIndex,
+                              filter,
+                            }),
                         cursor: position === 0 ? "pointer" : "default",
                         pointerEvents: position === 0 ? "auto" : "none",
+                        boxShadow,
+                        animation,
                       }}
                       onClick={() => position === 0 && handleStoryClick(story.id)}
                     >
                       <img
-                        src={story.image || "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800"}
+                        src={story.image || "/img.png"}
                         alt={story.title}
                         style={styles.carouselImage}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800";
+                        }}
                       />
                       <div style={styles.carouselOverlay}>
                         <h3 style={styles.popularTitle}>{story.title}</h3>
@@ -336,6 +388,20 @@ export default function Stories() {
                   NEXT
                 </button>
               </div>
+              
+              {/* Indicators */}
+              <div style={styles.indicators}>
+                {popular.map((_, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      ...styles.indicator,
+                      ...(index === currentIndex ? styles.activeIndicator : {}),
+                    }}
+                    onClick={() => setCurrentIndex(index)}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -355,20 +421,29 @@ export default function Stories() {
               <p>No stories found. Try adjusting your filters.</p>
             </div>
           ) : (
-            <div style={styles.storiesGrid}>
-              {stories.map((story) => (
+            <div style={isMobile ? styles.storiesGridMobile : styles.storiesGrid}>
+              {stories.map((story, index) => (
                 <div
                   key={story.id}
                   style={{
                     ...styles.storyCard,
                     ...(hoveredCard === story.id ? styles.storyCardHover : {}),
+                    animation: `fadeIn 0.5s ease-out ${index * 0.1}s both`,
                   }}
                   onClick={() => handleStoryClick(story.id)}
                   onMouseEnter={() => setHoveredCard(story.id)}
                   onMouseLeave={() => setHoveredCard(null)}
                 >
                   <div style={styles.cardImageContainer}>
-                    <img src={story.image} alt={story.title} style={styles.cardImage} />
+                    <img 
+                      src={story.image || "/img.png"} 
+                      alt={story.title} 
+                      style={styles.cardImage} 
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = "https://images.unsplash.com/photo-1455390582262-044cdead277a?w=800";
+                      }}
+                    />
                     <div style={styles.cardBadges}>
                       <span style={styles.levelBadge}>{story.level}</span>
                       {story.audioUrl && (
@@ -408,12 +483,16 @@ export default function Stories() {
 
                     <div style={styles.cardFooter}>
                       <div style={styles.cardMeta}>
-                        <span style={styles.metaItem}>
-                          <Clock size={14} /> {story.estimatedTime} min
-                        </span>
-                        <span style={styles.metaItem}>
-                          <BookOpen size={14} /> {story.wordCount} words
-                        </span>
+                        {story.estimatedTime && (
+                          <span style={styles.metaItem}>
+                            <Clock size={14} /> {story.estimatedTime} min
+                          </span>
+                        )}
+                        {story.wordCount && (
+                          <span style={styles.metaItem}>
+                            <BookOpen size={14} /> {story.wordCount} words
+                          </span>
+                        )}
                       </div>
                       <div style={styles.readButton}>
                         {story.readingStatus === "completed" ? (
@@ -552,8 +631,7 @@ const styles = {
     borderRadius: 24,
     overflow: "hidden",
     background: "rgba(255,255,255,0.05)",
-    boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
-    transition: "transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.6s ease, filter 0.6s ease",
+    transition: "transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.6s ease, filter 0.6s ease, box-shadow 0.6s ease",
     cursor: "pointer",
     border: "2px solid rgba(255,255,255,0.1)",
     willChange: "transform, opacity, filter",
@@ -768,5 +846,37 @@ const styles = {
     fontSize: 18,
     color: "#7f5af0",
     padding: "40px 20px",
+  },
+  indicators: {
+    display: "flex",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 20,
+  },
+  indicator: {
+    width: 10,
+    height: 10,
+    borderRadius: "50%",
+    background: "rgba(255,255,255,0.3)",
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+  },
+  activeIndicator: {
+    background: "#22d3ee",
+    transform: "scale(1.2)",
+  },
+  // Mobile adjustments
+  carouselCardMobile: {
+    position: "relative",
+    width: "100%",
+    maxWidth: 360,
+    height: 260,
+    transform: "none",
+    margin: "0 auto",
+  },
+  storiesGridMobile: {
+    display: "grid",
+    gridTemplateColumns: "1fr",
+    gap: 20,
   },
 };
