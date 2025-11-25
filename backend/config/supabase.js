@@ -6,8 +6,8 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // Get environment variables
-const supabaseUrl = process.env.SUPABASE_URL?.trim() || "https://pozyefnlhopwyxgbphyg.supabase.co";
-const supabaseKey = process.env.SUPABASE_ANON_KEY?.trim() || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvenllZm5saG9wd3l4Z2JwaHlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI1OTc2MjgsImV4cCI6MjA3ODE3MzYyOH0.NCg66_BKkTuny_Xvu0TKJeB9v6UOCOD5DX2VqYlaD20";
+const supabaseUrl = process.env.SUPABASE_URL?.trim() ;
+const supabaseKey = process.env.SUPABASE_ANON_KEY?.trim();
 
 console.log("Supabase configuration:");
 console.log("URL:", supabaseUrl ? "Found" : "Missing");
