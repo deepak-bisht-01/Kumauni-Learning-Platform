@@ -110,7 +110,7 @@ pip install -r requirements.txt
 
 1. Create a Supabase project at [supabase.io](https://supabase.io)
 2. Run the SQL scripts in `SUPABASE_SETUP.md` to set up the database schema
-3. Update the database configuration in `backend/config/supabase.js` with your Supabase credentials
+3. Create a `backend/.env` file with your Supabase credentials (see `SUPABASE_SETUP.md` for details)
 
 ## Running the Application
 

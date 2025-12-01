@@ -56,8 +56,19 @@ coverage/
 *.seed
 *.pid.lock
 
-# === Lock Files (optional if using multiple managers) ===
+# === Machine Learning Models (large files) ===
+*.pkl
+*.h5
+*.hdf5
+*.pth
+*.pt
+*.onnx
+*.pb
+translator/models/*.pkl
+translator/models/*.h5
+translator/models/*.hdf5
 
- package-lock.json
- yarn.lock
- pnpm-lock.yaml
+# === Lock Files (keep package-lock.json tracked for consistency) ===
+# Note: package-lock.json is intentionally tracked for dependency consistency
+# yarn.lock
+# pnpm-lock.yaml
