@@ -298,6 +298,7 @@ const HomeCulture = () => {
             padding: 60px 40px;
             text-align: center;
             min-height: auto; /* allow section to size to its content */
+            justify-content: center; /* center quote block vertically on medium screens */
           }
 
           .left-content {
@@ -312,13 +313,15 @@ const HomeCulture = () => {
           }
 
           .nav-right {
-            display: flex;
-            gap: 8px;
-            margin-right: 8px;
+            display: none;
+          }
+
+          .nav-right {
+            display: none;
           }
 
           .mobile-menu-button {
-            display: none;
+            display: block;
           }
 
           .mobile-menu {
@@ -381,8 +384,9 @@ const HomeCulture = () => {
           }
 
           .culture {
-            padding: 40px 20px 80px;
-            min-height: auto;
+            padding: 40px 20px;
+            min-height: calc(100vh - 80px); /* fill most of the screen height on small phones */
+            justify-content: center;        /* center quote block vertically on small phones */
           }
 
           .left-content h1 {

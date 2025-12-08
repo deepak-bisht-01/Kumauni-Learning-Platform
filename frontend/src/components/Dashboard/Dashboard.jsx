@@ -31,6 +31,15 @@ export default function Dashboard() {
   const [userInfo, setUserInfo] = useState(null);
   const [hoveredCard, setHoveredCard] = useState(null);
   const [showDailyQuiz, setShowDailyQuiz] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 820px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   // Function to fetch dashboard data
   const fetchDashboardData = async () => {
@@ -140,10 +149,26 @@ export default function Dashboard() {
   const user = data.user || data.data?.user || userInfo || { full_name: "User", email: "" };
 
   return (
-    <div style={styles.page}>
-      <div style={styles.container}>
+    <div
+      style={{
+        ...styles.page,
+        padding: isMobile ? "70px 16px" : styles.page.padding,
+      }}
+    >
+      <div
+        style={{
+          ...styles.container,
+          maxWidth: isMobile ? 960 : styles.container.maxWidth,
+        }}
+      >
         {/* Header Section */}
-        <div style={styles.headerGrid}>
+        <div
+          style={{
+            ...styles.headerGrid,
+            gridTemplateColumns: isMobile ? "1fr" : styles.headerGrid.gridTemplateColumns,
+            gap: isMobile ? 16 : styles.headerGrid.gap,
+          }}
+        >
           <div style={styles.welcomeCard}>
             <div style={styles.welcomeHeader}>
               <div>
@@ -178,7 +203,13 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Cards */}
-        <div style={styles.statsGrid}>
+        <div
+          style={{
+            ...styles.statsGrid,
+            gridTemplateColumns: isMobile ? "1fr" : styles.statsGrid.gridTemplateColumns,
+            gap: isMobile ? 16 : styles.statsGrid.gap,
+          }}
+        >
           <div 
             style={styles.statCard}
             onMouseEnter={(e) => {
@@ -283,7 +314,14 @@ export default function Dashboard() {
         {/* Profile Modal */}
         {showProfile && (
           <div style={styles.profileModal} onClick={handleModalBackdropClick}>
-            <div style={styles.profileModalContent} onClick={(e) => e.stopPropagation()}>
+            <div
+              style={{
+                ...styles.profileModalContent,
+                padding: isMobile ? 22 : styles.profileModalContent.padding,
+                maxWidth: isMobile ? "100%" : styles.profileModalContent.maxWidth,
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
               <div style={styles.profileModalHeader}>
                 <h2 style={styles.profileModalTitle}>Profile</h2>
                 <button
@@ -363,13 +401,30 @@ export default function Dashboard() {
         <div 
           style={{
             ...styles.startLearningCard,
+            padding: isMobile ? 24 : styles.startLearningCard.padding,
             ...(hoveredCard === 'start' ? styles.startLearningCardHover : {})
           }}
           onMouseEnter={() => setHoveredCard('start')}
           onMouseLeave={() => setHoveredCard(null)}
         >
-          <div style={styles.startLearningContent}>
-            <div style={styles.startLearningHeader}>
+          <div
+            style={{
+              ...styles.startLearningContent,
+              flexDirection: isMobile ? "column" : styles.startLearningContent.flexDirection,
+              alignItems: isMobile ? "flex-start" : styles.startLearningContent.alignItems,
+              gap: isMobile ? 16 : styles.startLearningContent.gap,
+            }}
+          >
+            <div
+              style={{
+                ...styles.startLearningHeader,
+                flexDirection: isMobile ? "column" : styles.startLearningHeader.flexDirection,
+                alignItems: isMobile ? "flex-start" : styles.startLearningHeader.alignItems,
+                gap: isMobile ? 12 : styles.startLearningHeader.gap,
+                textAlign: isMobile ? "left" : "inherit",
+                width: "100%",
+              }}
+            >
               <div style={styles.startLearningIcon}>
                 <Target size={32} color="#8b5cf6" />
               </div>
@@ -384,7 +439,11 @@ export default function Dashboard() {
               </div>
             </div>
             <button
-              style={styles.startButton}
+              style={{
+                ...styles.startButton,
+                width: isMobile ? "100%" : styles.startButton.width,
+                justifyContent: "center",
+              }}
               onClick={() => navigate("/learning")}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "scale(1.05)";
@@ -401,7 +460,13 @@ export default function Dashboard() {
         </div>
 
         {/* Feature Cards */}
-        <div style={styles.featureGrid}>
+        <div
+          style={{
+            ...styles.featureGrid,
+            gridTemplateColumns: isMobile ? "1fr" : styles.featureGrid.gridTemplateColumns,
+            gap: isMobile ? 16 : styles.featureGrid.gap,
+          }}
+        >
           {/* Accent Analyzer */}
           <div 
             style={{
@@ -495,7 +560,10 @@ export default function Dashboard() {
 
         {/* Learning Path */}
         <div 
-          style={styles.learningCard}
+          style={{
+            ...styles.learningCard,
+            padding: isMobile ? 22 : styles.learningCard.padding,
+          }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = "translateY(-4px)";
             e.currentTarget.style.boxShadow = "0 12px 40px rgba(0,0,0,0.4)";
@@ -507,8 +575,15 @@ export default function Dashboard() {
             e.currentTarget.style.border = "1px solid rgba(255,255,255,0.08)";
           }}
         >
-          <div style={styles.learningHeader}>
-            <div style={styles.learningHeaderLeft}>
+          <div
+            style={{
+              ...styles.learningHeader,
+              flexDirection: isMobile ? "column" : styles.learningHeader.flexDirection,
+              alignItems: isMobile ? "flex-start" : styles.learningHeader.alignItems,
+              gap: isMobile ? 12 : styles.learningHeader.gap,
+            }}
+          >
+            <div style={{ ...styles.learningHeaderLeft, gap: isMobile ? 8 : styles.learningHeaderLeft.gap }}>
               <Target size={20} color="#22d3ee" />
               <span style={{ fontSize: 20, fontWeight: 700 }}>Learning Path</span>
             </div>
@@ -518,7 +593,13 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div style={styles.progressBarContainer}>
+          <div
+            style={{
+              ...styles.progressBarContainer,
+              flexWrap: isMobile ? "wrap" : "nowrap",
+              padding: isMobile ? "0 4px" : styles.progressBarContainer.padding,
+            }}
+          >
             {Array(6)
               .fill(0)
               .map((_, i) => {
@@ -550,7 +631,12 @@ export default function Dashboard() {
             <div style={styles.progressLine} />
           </div>
 
-          <div style={styles.progressInfo}>
+          <div
+            style={{
+              ...styles.progressInfo,
+              marginTop: isMobile ? 14 : styles.progressInfo.marginTop,
+            }}
+          >
             <div style={styles.progressText}>
               <span style={{ fontWeight: 700 }}>Module 1: Greetings & Basics</span>
             </div>

@@ -15,6 +15,15 @@ export default function Learning() {
   const navigate = useNavigate();
   const [levels, setLevels] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const updateIsMobile = () =>
+      setIsMobile(window.matchMedia("(max-width: 768px)").matches);
+    updateIsMobile();
+    window.addEventListener("resize", updateIsMobile);
+    return () => window.removeEventListener("resize", updateIsMobile);
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -47,14 +56,47 @@ export default function Learning() {
   }
 
   return (
-    <div style={styles.page}>
-      <div style={styles.container}>
+    <div
+      style={{
+        ...styles.page,
+        padding: isMobile ? "72px 16px 32px" : styles.page.padding,
+      }}
+    >
+      <div
+        style={{
+          ...styles.container,
+          maxWidth: isMobile ? "100%" : styles.container.maxWidth,
+        }}
+      >
         <div style={styles.header}>
-          <h1 style={styles.title}>Start Learning Kumaoni</h1>
-          <p style={styles.subtitle}>Choose your level and begin your journey</p>
+          <h1
+            style={{
+              ...styles.title,
+              fontSize: isMobile ? 28 : styles.title.fontSize,
+              lineHeight: 1.3,
+            }}
+          >
+            Start Learning Kumaoni
+          </h1>
+          <p
+            style={{
+              ...styles.subtitle,
+              fontSize: isMobile ? 16 : styles.subtitle.fontSize,
+            }}
+          >
+            Choose your level and begin your journey
+          </p>
         </div>
 
-        <div style={styles.levelsGrid}>
+        <div
+          style={{
+            ...styles.levelsGrid,
+            gridTemplateColumns: isMobile
+              ? "1fr"
+              : styles.levelsGrid.gridTemplateColumns,
+            gap: isMobile ? 16 : styles.levelsGrid.gap,
+          }}
+        >
           {LEVELS.map((level, index) => {
             const levelData = levels.find((l) => l.id === level.id);
             const isLocked = index > 0 && !levels[index - 1]?.completed;
@@ -65,6 +107,7 @@ export default function Learning() {
                 key={level.id}
                 style={{
                   ...styles.levelCard,
+                  padding: isMobile ? 22 : styles.levelCard.padding,
                   background: `linear-gradient(135deg, ${level.color}22 0%, ${level.color}11 100%)`,
                   border: `2px solid ${isLocked ? "rgba(255,255,255,0.1)" : level.color}40`,
                   opacity: isLocked ? 0.5 : 1,
@@ -78,8 +121,20 @@ export default function Learning() {
                   </div>
                 )}
                 <div style={styles.levelIcon}>{level.icon}</div>
-                <h2 style={styles.levelName}>{level.name}</h2>
-                <div style={styles.progressBar}>
+                <h2
+                  style={{
+                    ...styles.levelName,
+                    fontSize: isMobile ? 20 : styles.levelName.fontSize,
+                  }}
+                >
+                  {level.name}
+                </h2>
+                <div
+                  style={{
+                    ...styles.progressBar,
+                    height: isMobile ? 10 : styles.progressBar.height,
+                  }}
+                >
                   <div
                     style={{
                       ...styles.progressFill,
@@ -89,7 +144,13 @@ export default function Learning() {
                   />
                 </div>
                 <div style={styles.progressText}>{progress}% Complete</div>
-                <div style={styles.levelStats}>
+                <div
+                  style={{
+                    ...styles.levelStats,
+                    gap: isMobile ? 6 : styles.levelStats.gap,
+                    fontSize: isMobile ? 13 : styles.levelStats.fontSize,
+                  }}
+                >
                   <span>{levelData?.lessonsCount || 0} Lessons</span>
                   <span>•</span>
                   <span>{levelData?.quizzesCount || 0} Quizzes</span>
@@ -98,6 +159,8 @@ export default function Learning() {
                   style={{
                     ...styles.levelButton,
                     background: isLocked ? "#666" : level.color,
+                    fontSize: isMobile ? 14 : styles.levelButton.fontSize,
+                    padding: isMobile ? "12px 18px" : styles.levelButton.padding,
                   }}
                   disabled={isLocked}
                 >

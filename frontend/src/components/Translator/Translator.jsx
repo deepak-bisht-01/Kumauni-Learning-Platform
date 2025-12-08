@@ -1,5 +1,5 @@
 // frontend/src/components/Translator/Translator.jsx
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 
 export default function Translator() {
   const [text, setText] = useState("");
@@ -7,8 +7,17 @@ export default function Translator() {
   const [loading, setLoading] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const audioRef = useRef(null);
   const API_URL = process.env.REACT_APP_TRANSLATOR_URL || "http://127.0.0.1:5001";
+
+  useEffect(() => {
+    const updateIsMobile = () =>
+      setIsMobile(window.matchMedia("(max-width: 768px)").matches);
+    updateIsMobile();
+    window.addEventListener("resize", updateIsMobile);
+    return () => window.removeEventListener("resize", updateIsMobile);
+  }, []);
 
   const handleTranslate = async () => {
     if (!text.trim()) return;
@@ -81,13 +90,44 @@ export default function Translator() {
   };
 
   return (
-    <div style={styles.page}>
-      <div style={styles.card}>
-        <h1 style={styles.title}>🌐 Kumaoni Translator</h1>
-        <p style={styles.subtitle}>Translate between English and Kumaoni</p>
+    <div
+      style={{
+        ...styles.page,
+        padding: isMobile ? 16 : styles.page.padding,
+        alignItems: isMobile ? "stretch" : styles.page.alignItems,
+      }}
+    >
+      <div
+        style={{
+          ...styles.card,
+          padding: isMobile ? "24px 18px" : styles.card.padding,
+          maxWidth: isMobile ? "100%" : styles.card.maxWidth,
+          textAlign: "center",
+        }}
+      >
+        <h1
+          style={{
+            ...styles.title,
+            fontSize: isMobile ? 24 : styles.title.fontSize,
+          }}
+        >
+          🌐 Kumaoni Translator
+        </h1>
+        <p
+          style={{
+            ...styles.subtitle,
+            fontSize: isMobile ? 14 : styles.subtitle.fontSize,
+          }}
+        >
+          Translate between English and Kumaoni
+        </p>
 
         <textarea
-          style={styles.textarea}
+          style={{
+            ...styles.textarea,
+            height: isMobile ? 110 : styles.textarea.height,
+            fontSize: isMobile ? 14 : styles.textarea.fontSize,
+          }}
           placeholder="Enter English text..."
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -96,6 +136,8 @@ export default function Translator() {
         <button
           style={{
             ...styles.button,
+            padding: isMobile ? "12px 16px" : styles.button.padding,
+            fontSize: isMobile ? 15 : styles.button.fontSize,
             opacity: loading ? 0.7 : 1,
             cursor: loading ? "not-allowed" : "pointer",
           }}
@@ -105,12 +147,20 @@ export default function Translator() {
           {loading ? "Translating..." : "Translate"}
         </button>
 
-        <div style={styles.resultBox}>
+        <div
+          style={{
+            ...styles.resultBox,
+            padding: isMobile ? 14 : styles.resultBox.padding,
+          }}
+        >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <strong>Result:</strong>
             {translated && (
               <button
-                style={styles.speakerButton}
+                style={{
+                  ...styles.speakerButton,
+                  padding: isMobile ? "6px 10px" : styles.speakerButton.padding,
+                }}
                 onClick={isPlaying ? stopAudio : handleTextToSpeech}
                 disabled={loading}
               >
