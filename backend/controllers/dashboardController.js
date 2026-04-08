@@ -86,38 +86,8 @@ export const getOverview = async (req, res, next) => {
         }
       }
 
-      const { data: ach, error: achError } = await client
-        .from("user_achievements")
-        .select("achievement_id, timestamp")
-        .eq("user_id", userId)
-        .order("timestamp", { ascending: false })
-        .limit(6);
-      if (achError) {
-        console.error("[Dashboard] Error fetching achievements:", achError);
-        achievements = [];
-      } else {
-        const ids = (ach || []).map(a => a.achievement_id);
-        if (ids.length) {
-          const { data: defs, error: defsError } = await client
-            .from("achievements")
-            .select("id, name, xp_reward")
-            .in("id", ids);
-          if (defsError) {
-            console.error("[Dashboard] Error fetching achievement definitions:", defsError);
-            achievements = [];
-          } else {
-            const map = new Map((defs || []).map(d => [d.id, d]));
-            achievements = (ach || []).map(a => ({
-              id: a.achievement_id,
-              name: map.get(a.achievement_id)?.name || "",
-              xp_reward: map.get(a.achievement_id)?.xp_reward || 0,
-              timestamp: a.timestamp,
-            }));
-          }
-        } else {
-          achievements = [];
-        }
-      }
+      // Achievements and user_achievements tables not in current schema
+      achievements = [];
 
       const { data: lb, error: lbError } = await client
         .from("leaderboard")
@@ -131,28 +101,8 @@ export const getOverview = async (req, res, next) => {
         top3 = (lb || []).map((r, i) => ({ user_name: `Top ${i + 1}`, xp_total: r.xp_total }));
       }
 
-      // Try to fetch flashcards, but handle if table doesn't exist
+      // Flashcards table not in current schema
       let dailyCards = [];
-      try {
-        const { data: cards, error: cardsError } = await client
-          .from("flashcards")
-          .select("id, english_word, kumaoni_word, reviewed_count")
-          .eq("user_id", userId)
-          .order("reviewed_count", { ascending: true })
-          .order("id", { ascending: true })
-          .limit(10);
-        
-        if (cardsError) {
-          // If table doesn't exist or other error, just use empty array
-          console.warn("[Dashboard] Could not fetch flashcards (table may not exist):", cardsError.message);
-          dailyCards = [];
-        } else {
-          dailyCards = cards || [];
-        }
-      } catch (err) {
-        console.warn("[Dashboard] Error fetching flashcards:", err.message);
-        dailyCards = [];
-      }
     } else {
       try {
         const [[completedRowMysql]] = await client.query(

@@ -13,14 +13,26 @@ export async function fetchDashboardOverview(token) {
 
     console.log("Dashboard API response status:", res.status);
     if (!res.ok) {
-      throw new Error(`HTTP error! status: ${res.status}`);
+      const errorText = await res.text();
+      console.error("Dashboard API error response:", errorText);
+      throw new Error(`HTTP error! status: ${res.status}, message: ${errorText}`);
     }
     
     const data = await res.json();
     console.log("Dashboard API response data:", data);
+    
+    // Ensure the response has the expected structure
+    if (!data.hasOwnProperty('success')) {
+      return { success: false, message: "Invalid API response format" };
+    }
+    
     return data;
   } catch (error) {
     console.error("API Error:", error);
+    // Provide more specific error messages
+    if (error.message.includes('HTTP error! status: 500')) {
+      return { success: false, message: "Server error - Please check backend logs for details" };
+    }
     return { success: false, message: "Failed to fetch dashboard: " + error.message };
   }
 }

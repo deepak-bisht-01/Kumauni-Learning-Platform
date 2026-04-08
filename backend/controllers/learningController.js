@@ -92,14 +92,31 @@ export const getLevelContent = async (req, res) => {
       progressMap[p.lesson_id] = p.status;
     });
 
-    // Get quizzes (if table exists)
+    // Get quiz questions (if table exists)
     let quizzes = [];
     try {
       const { data: quizData } = await supabase
-        .from("quizzes")
+        .from("quiz_questions")
         .select("*")
         .eq("level", dbLevel)
         .order("id", { ascending: true });
+
+      // Group questions by module or treat each as individual quiz
+      const quizMap = {};
+      (quizData || []).forEach(q => {
+        const moduleId = q.module || 'general';
+        if (!quizMap[moduleId]) {
+          quizMap[moduleId] = {
+            id: moduleId,
+            title: moduleId === 'general' ? 'General Quiz' : `${moduleId} Quiz`,
+            description: `Quiz for ${moduleId}`,
+            questions_count: 0,
+            questions: []
+          };
+        }
+        quizMap[moduleId].questions_count++;
+        quizMap[moduleId].questions.push(q);
+      });
 
       const { data: quizProgress } = await supabase
         .from("quiz_progress")
@@ -111,45 +128,19 @@ export const getLevelContent = async (req, res) => {
         quizProgressMap[qp.quiz_id] = qp.status;
       });
 
-      quizzes = (quizData || []).map((q) => ({
+      quizzes = Object.values(quizMap).map((q) => ({
         id: q.id,
-        title: q.title || "Quiz",
-        description: q.description || "",
-        questionsCount: q.questions_count || 5,
+        title: q.title,
+        description: q.description,
+        questionsCount: q.questions_count,
         completed: quizProgressMap[q.id] === "completed",
       }));
     } catch (e) {
-      console.log("Quizzes table not found");
+      console.log("Quiz questions table not found");
     }
 
-    // Get assignments (if table exists)
+    // Assignments not in current schema, return empty array
     let assignments = [];
-    try {
-      const { data: assignmentData } = await supabase
-        .from("assignments")
-        .select("*")
-        .eq("level", dbLevel)
-        .order("id", { ascending: true });
-
-      const { data: assignmentProgress } = await supabase
-        .from("assignment_progress")
-        .select("assignment_id, status")
-        .eq("user_id", userId);
-
-      const assignmentProgressMap = {};
-      assignmentProgress?.forEach(ap => {
-        assignmentProgressMap[ap.assignment_id] = ap.status;
-      });
-
-      assignments = (assignmentData || []).map((a) => ({
-        id: a.id,
-        title: a.title || "Assignment",
-        description: a.description || "",
-        completed: assignmentProgressMap[a.id] === "completed",
-      }));
-    } catch (e) {
-      console.log("Assignments table not found");
-    }
 
     res.json({
       success: true,
@@ -371,24 +362,44 @@ export const getLevelModule = async (req, res) => {
     const dbLevel = LEVEL_MAPPING[levelId] || levelId;
 
     if (type === "quizzes") {
-      const { data: quizzes } = await supabase
-        .from("quizzes")
-        .select("id, title, description, questions_count")
+      const { data: quizQuestions } = await supabase
+        .from("quiz_questions")
+        .select("id, question, options, correct_answer, module, level")
         .in("level", [dbLevel, levelId])
         .order("id", { ascending: true });
+      
+      // Group by module
+      const quizMap = {};
+      (quizQuestions || []).forEach(q => {
+        const moduleId = q.module || 'general';
+        if (!quizMap[moduleId]) {
+          quizMap[moduleId] = {
+            id: moduleId,
+            title: moduleId === 'general' ? 'General Quiz' : `${moduleId} Quiz`,
+            description: `Quiz for ${moduleId}`,
+            questions_count: 0,
+            questions: []
+          };
+        }
+        quizMap[moduleId].questions_count++;
+        quizMap[moduleId].questions.push(q);
+      });
+
       const { data: qp } = await supabase
         .from("quiz_progress")
         .select("quiz_id, status")
         .eq("user_id", userId);
       const pm = {};
       qp?.forEach((r) => { pm[r.quiz_id] = r.status; });
-      const quizItems = (quizzes || []).map((q) => ({
+      
+      const quizItems = Object.values(quizMap).map((q) => ({
         id: q.id,
         title: q.title,
         description: q.description,
         questions_count: q.questions_count,
         completed: pm[q.id] === "completed",
         source: "quizzes",
+        questions: q.questions
       }));
 
       const { data: lessons } = await supabase
@@ -421,13 +432,8 @@ export const getLevelModule = async (req, res) => {
     }
 
     if (type === "daily_words") {
-      const { data } = await supabase
-        .from("flashcards")
-        .select("id, english_word, kumaoni_word, reviewed_count")
-        .eq("user_id", userId)
-        .order("reviewed_count", { ascending: true })
-        .limit(50);
-      return res.json({ success: true, items: data || [] });
+      // Flashcards table not in current schema, return empty array
+      return res.json({ success: true, items: [] });
     }
 
     const blockType = type === "word_meanings" ? "word_meaning" : type === "sentence_making" ? "sentence_making" : type;

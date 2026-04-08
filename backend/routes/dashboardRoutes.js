@@ -5,6 +5,12 @@ import { getOverview } from "../controllers/dashboardController.js";
 
 const router = express.Router();
 
-router.get("/overview", requireAuth, getOverview);
+console.log("Dashboard routes initialized");
+
+router.get("/overview", requireAuth, (req, res, next) => {
+  console.log("Dashboard overview route called");
+  console.log("User from token:", req.user);
+  next();
+}, getOverview);
 
 export default router;
